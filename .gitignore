@@ -9,8 +9,8 @@ coverage
 *.log
 *.tsbuildinfo
 .DS_Store
-storage/
-!storage/.gitkeep
+/storage/
+!/storage/.gitkeep
 
 # Personal project release build output
 .release/out/
