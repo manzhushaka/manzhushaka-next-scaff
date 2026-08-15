@@ -7,8 +7,22 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['DejaVu Sans', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
-        serif: ['DejaVu Serif', 'Songti SC', 'serif'],
+        sans: [
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'PingFang SC',
+          'sans-serif',
+        ],
+        serif: [
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'PingFang SC',
+          'sans-serif',
+        ],
         mono: ['JetBrains Mono', 'SFMono-Regular', 'monospace'],
       },
     },

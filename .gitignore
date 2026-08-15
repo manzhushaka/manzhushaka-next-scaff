@@ -11,3 +11,7 @@ coverage
 .DS_Store
 storage/
 !storage/.gitkeep
+
+# Personal project release build output
+.release/out/
+.release/work/

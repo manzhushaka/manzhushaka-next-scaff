@@ -12,7 +12,11 @@ async function bootstrap() {
   app.enableCors({ origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api');
-  await app.listen(4000);
+  const port = Number(process.env.API_PORT ?? 4000);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('API_PORT 必须是 1-65535 的整数');
+  }
+  await app.listen(port);
 }
 
 bootstrap();

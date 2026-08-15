@@ -1,10 +1,14 @@
 'use client';
 
+import { ArrowRight, LoaderCircle, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react';
-import { FormEvent, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import consolePreview from '../../../../docs/images/manzhushaka-console.png';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/ui/password-input';
+import { cn } from '../../lib/cn';
 
 type Captcha = { id: string; image: string; expiresIn: number };
 
@@ -12,25 +16,36 @@ export default function LoginPage() {
   const [captcha, setCaptcha] = useState<Captcha | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const captchaRef = useRef<HTMLInputElement>(null);
   const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-  const loadCaptcha = async () => {
+
+  const loadCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
     try {
-      const response = await fetch(`${api}/api/auth/captcha`, { credentials: 'include' });
+      const response = await fetch(api + '/api/auth/captcha', { credentials: 'include' });
+      if (!response.ok) throw new Error('验证码获取失败。');
       setCaptcha((await response.json()) as Captcha);
     } catch {
       setMessage('无法连接认证服务，请检查 API 是否启动。');
+    } finally {
+      setCaptchaLoading(false);
     }
-  };
+  }, [api]);
+
   useEffect(() => {
     void loadCaptcha();
-  }, []);
+  }, [loadCaptcha]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage('');
     const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch(`${api}/api/auth/login`, {
+      const response = await fetch(api + '/api/auth/login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
@@ -50,75 +65,52 @@ export default function LoginPage() {
         ? '/force-change-password'
         : '/dashboard';
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '登录失败。');
+      const nextMessage = error instanceof Error ? error.message : '登录失败。';
+      setMessage(nextMessage);
+      if (nextMessage.includes('验证码')) captchaRef.current?.focus();
+      else if (nextMessage.includes('密码')) passwordRef.current?.focus();
+      else usernameRef.current?.focus();
       await loadCaptcha();
     } finally {
       setLoading(false);
     }
   }
+
   return (
-    <main className="grid min-h-screen lg:grid-cols-[minmax(420px,0.9fr)_1.1fr]">
-      <section className="relative hidden overflow-hidden bg-[#202326] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div
-          className="absolute inset-0 opacity-25"
-          style={{
-            backgroundImage:
-              'linear-gradient(135deg, transparent 0 42%, rgba(231,111,81,.5) 42.2% 42.5%, transparent 42.7% 100%), linear-gradient(45deg, transparent 0 58%, rgba(244,162,97,.2) 58.2% 58.4%, transparent 58.7% 100%)',
-          }}
-        />
-        <div className="relative">
-          <div className="mb-20 flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-[4px] bg-[#e76f51] font-serif text-xl font-bold">
-              M
-            </span>
-            <span>
-              <strong className="block font-serif text-lg">Manzhushaka</strong>
-              <small className="text-[10px] uppercase tracking-[.2em] text-white/55">Console</small>
-            </span>
-          </div>
-          <p className="mb-5 max-w-[360px] font-serif text-4xl leading-tight">
-            把复杂系统，
-            <br />
-            <span className="text-[#f4a261]">留在清晰的边界里。</span>
-          </p>
-          <p className="max-w-[330px] text-sm leading-7 text-white/60">
-            安全、审计、权限和异步数据任务，在一张可靠的控制面板上保持可追溯。
-          </p>
-        </div>
-        <div className="relative flex items-center gap-5 text-[11px] uppercase tracking-[.12em] text-white/45">
-          <span className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#168aad]" />
-            私有连接
+    <main className="flex min-h-screen bg-[rgb(var(--surface))]">
+      <section className="relative flex w-full flex-col px-6 py-6 lg:w-[520px] lg:px-16">
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-[6px] bg-[rgb(var(--accent))] text-lg font-bold text-white">
+            M
           </span>
-          <span>·</span>
-          <span>RBAC / AUDIT</span>
+          <span>
+            <strong className="block text-[15px] font-semibold">Manzhushaka</strong>
+            <small className="block text-[10px] uppercase tracking-[.16em] text-[rgb(var(--ink-muted))]">
+              Console
+            </small>
+          </span>
         </div>
-      </section>
-      <section className="flex items-center justify-center bg-[rgb(var(--canvas))] px-6 py-12">
-        <div className="w-full max-w-[400px]">
-          <div className="mb-12 lg:hidden">
-            <span className="mb-4 grid h-10 w-10 place-items-center rounded-[4px] bg-[rgb(var(--accent))] font-serif text-xl font-bold text-white">
-              M
-            </span>
-            <p className="font-serif text-xl">Manzhushaka Console</p>
-          </div>
+        <div className="my-auto w-full max-w-[360px] self-center py-12">
           <div className="mb-8">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[.18em] text-[rgb(var(--accent-strong))]">
-              SECURE ACCESS / 01
-            </p>
-            <h1 className="mb-2 font-serif text-3xl font-bold">欢迎回来</h1>
-            <p className="text-sm text-[rgb(var(--ink-muted))]">使用管理员账号进入控制台。</p>
+            <h1 className="mb-2 text-2xl font-semibold">欢迎回来</h1>
+            <p className="text-sm text-[rgb(var(--ink-muted))]">登录 Manzhushaka 管理控制台</p>
           </div>
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-4" aria-busy={loading}>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium">用户名</span>
-              <Input name="username" autoComplete="username" placeholder="输入用户名" required />
+              <Input
+                ref={usernameRef}
+                name="username"
+                autoComplete="username"
+                placeholder="输入用户名"
+                required
+              />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium">密码</span>
-              <Input
+              <PasswordInput
+                ref={passwordRef}
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 placeholder="输入密码"
                 required
@@ -127,33 +119,48 @@ export default function LoginPage() {
             <div>
               <span className="mb-1.5 block text-xs font-medium">图片验证码</span>
               <div className="flex gap-2">
-                <Input name="captchaCode" inputMode="numeric" placeholder="输入图中数字" required />
+                <Input
+                  ref={captchaRef}
+                  name="captchaCode"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="输入图中数字"
+                  required
+                />
                 <button
                   type="button"
                   title="刷新验证码"
                   aria-label="刷新验证码"
                   onClick={() => void loadCaptcha()}
-                  className="h-10 w-[136px] shrink-0 overflow-hidden rounded-[4px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))]"
+                  disabled={captchaLoading}
+                  className="ui-press h-9 w-[128px] shrink-0 overflow-hidden rounded-[2px] border border-[rgb(var(--line))] bg-[rgb(var(--muted))] disabled:cursor-wait disabled:opacity-70"
                 >
-                  {captcha ? (
+                  {captcha && !captchaLoading ? (
                     <img src={captcha.image} alt="图片验证码" className="h-full w-full" />
                   ) : (
-                    <RefreshCw size={16} className="mx-auto text-[rgb(var(--ink-muted))]" />
+                    <RefreshCw
+                      size={16}
+                      className={cn(
+                        'mx-auto text-[rgb(var(--ink-muted))]',
+                        captchaLoading && 'motion-safe:animate-spin',
+                      )}
+                    />
                   )}
                 </button>
               </div>
             </div>
-            {message && (
+            {message ? (
               <p
                 role="alert"
-                className="rounded-[4px] border border-[rgb(var(--danger))]/30 bg-[rgb(var(--danger))]/10 px-3 py-2 text-xs text-[rgb(var(--danger))]"
+                className="rounded-[2px] border border-[rgb(var(--danger))]/30 bg-[rgb(var(--danger))]/10 px-3 py-2 text-xs text-[rgb(var(--danger))]"
               >
                 {message}
               </p>
-            )}
+            ) : null}
             <Button type="submit" className="mt-2 w-full" disabled={loading}>
+              {loading ? <LoaderCircle size={16} className="motion-safe:animate-spin" /> : null}
               {loading ? '正在验证…' : '进入控制台'}
-              <ArrowRight size={16} />
+              {!loading ? <ArrowRight size={16} /> : null}
             </Button>
           </form>
           <div className="mt-8 flex items-center gap-2 border-t border-[rgb(var(--line))] pt-5 text-xs text-[rgb(var(--ink-muted))]">
@@ -166,6 +173,30 @@ export default function LoginPage() {
           <Link href="/login" className="sr-only">
             登录
           </Link>
+        </div>
+        <p className="text-xs text-[rgb(var(--ink-muted))]">Manzhushaka Console · 安全管理平台</p>
+      </section>
+      <section className="relative hidden flex-1 overflow-hidden bg-[rgb(var(--accent))] p-10 text-white lg:flex lg:flex-col lg:justify-center">
+        <div className="mx-auto w-full max-w-[880px]">
+          <div className="mb-8">
+            <p className="text-3xl font-semibold">清晰掌控每一次系统变化</p>
+            <p className="mt-3 text-sm text-white/75">
+              用户、权限、审计与异步任务，在统一工作区内保持可追踪。
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-[6px] border border-white/25 bg-white/10 p-2 shadow-2xl shadow-blue-950/25">
+            <div className="mb-2 flex h-7 items-center gap-1.5 rounded-[3px] bg-white/10 px-3">
+              <span className="h-2 w-2 rounded-full bg-white/50" />
+              <span className="h-2 w-2 rounded-full bg-white/35" />
+              <span className="h-2 w-2 rounded-full bg-white/20" />
+            </div>
+            <Image
+              src={consolePreview}
+              alt="Manzhushaka Console 工作台预览"
+              priority
+              className="h-auto w-full rounded-[2px]"
+            />
+          </div>
         </div>
       </section>
     </main>

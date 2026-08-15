@@ -15,13 +15,13 @@
 
 ## 技术栈
 
-| 领域     | 技术                                                         |
-| -------- | ------------------------------------------------------------ |
-| Web      | Next.js 15、React 19、Tailwind CSS、Radix UI、TanStack Query |
-| API      | NestJS 11、Prisma 6、Zod、Argon2                             |
-| Worker   | TypeScript、tsx、Prisma、Pino                                |
-| 数据库   | MySQL                                                        |
-| Monorepo | pnpm workspace                                               |
+| 领域     | 技术                                                                  |
+| -------- | --------------------------------------------------------------------- |
+| Web      | Next.js 15、React 19、Tailwind CSS、Arco Design React、TanStack Query |
+| API      | NestJS 11、Prisma 6、Zod、Argon2                                      |
+| Worker   | TypeScript、tsx、Prisma、Pino                                         |
+| 数据库   | MySQL                                                                 |
+| Monorepo | pnpm workspace                                                        |
 
 ## 项目结构
 

@@ -3,35 +3,41 @@
 @tailwind utilities;
 
 :root {
-  --canvas: 245 246 247;
+  --canvas: 242 243 245;
   --surface: 255 255 255;
-  --muted: 238 240 241;
-  --ink: 30 36 39;
-  --ink-muted: 93 102 107;
-  --line: 220 225 227;
-  --accent: 231 111 81;
-  --accent-strong: 201 79 59;
-  --coral: 244 162 97;
-  --success: 22 138 173;
-  --warning: 184 117 22;
-  --danger: 185 56 43;
-  --info: 61 110 168;
+  --muted: 247 248 250;
+  --ink: 29 33 41;
+  --ink-muted: 78 89 105;
+  --line: 229 230 235;
+  --accent: 22 93 255;
+  --accent-strong: 14 66 210;
+  --accent-soft: 232 243 255;
+  --success: 20 201 201;
+  --warning: 255 125 0;
+  --danger: 245 63 63;
+  --info: 64 128 255;
+  --motion-feedback: 120ms;
+  --motion-panel: 220ms;
+  --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
+  --blur-overlay: 20px;
+  --shadow-overlay: 0 18px 48px rgb(29 33 41 / 0.18);
 }
 
 .dark {
-  --canvas: 23 25 27;
-  --surface: 32 35 38;
-  --muted: 41 45 48;
-  --ink: 245 246 247;
-  --ink-muted: 183 190 194;
-  --line: 59 65 69;
-  --accent: 240 139 109;
-  --accent-strong: 255 154 125;
-  --coral: 244 162 97;
-  --success: 83 181 208;
-  --warning: 233 196 106;
-  --danger: 255 129 112;
-  --info: 121 168 223;
+  color-scheme: dark;
+  --canvas: 23 26 29;
+  --surface: 35 38 42;
+  --muted: 46 49 54;
+  --ink: 247 248 250;
+  --ink-muted: 170 176 187;
+  --line: 57 60 66;
+  --accent: 64 128 255;
+  --accent-strong: 148 191 255;
+  --accent-soft: 29 51 84;
+  --success: 39 195 195;
+  --warning: 255 154 46;
+  --danger: 247 101 96;
+  --info: 111 165 255;
 }
 
 * {
@@ -40,13 +46,42 @@
 html {
   background: rgb(var(--canvas));
 }
-body {
+body,
+html body[arco-theme] {
+  --primary-6: var(--accent);
+  --link-6: var(--accent);
+  --success-6: var(--success);
+  --warning-6: var(--warning);
+  --danger-6: var(--danger);
+  --color-bg-1: rgb(var(--surface));
+  --color-bg-2: rgb(var(--surface));
+  --color-bg-3: rgb(var(--muted));
+  --color-text-1: rgb(var(--ink));
+  --color-text-2: rgb(var(--ink-muted));
+  --color-border-1: rgb(var(--line));
+  --color-border-2: rgb(var(--line));
+  --color-fill-1: rgb(var(--muted) / 0.6);
+  --color-fill-2: rgb(var(--muted));
+  --color-primary-light-1: rgb(var(--accent) / 0.12);
+  --color-primary-light-2: rgb(var(--accent) / 0.2);
+  --color-primary-light-3: rgb(var(--accent) / 0.35);
+  --color-primary-light-4: rgb(var(--accent) / 0.5);
+  --color-success-light-1: rgb(var(--success) / 0.12);
+  --color-warning-light-1: rgb(var(--warning) / 0.12);
+  --color-danger-light-1: rgb(var(--danger) / 0.12);
   margin: 0;
   background: rgb(var(--canvas));
   color: rgb(var(--ink));
-  font-family: 'DejaVu Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 button,
 input,
@@ -57,8 +92,18 @@ textarea {
 button {
   cursor: pointer;
 }
+.ui-press {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ui-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.arco-btn > svg {
+  display: inline-block;
+}
 ::selection {
-  background: rgb(var(--coral) / 0.32);
+  background: rgb(var(--accent) / 0.2);
 }
 :focus-visible {
   outline: 2px solid rgb(var(--accent-strong));
@@ -73,5 +118,20 @@ button {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --blur-overlay: 0px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: 150 156 166;
+  }
+  .dark {
+    --line: 190 195 204;
   }
 }

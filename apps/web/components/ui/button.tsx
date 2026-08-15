@@ -16,12 +16,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-[4px] border text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-8 px-3' : 'h-10 px-4',
+        'ui-press inline-flex items-center justify-center gap-2 rounded-[2px] border text-sm font-medium transition-[color,background-color,border-color,transform] [transition-duration:var(--motion-feedback)] disabled:pointer-events-none disabled:opacity-45',
+        size === 'sm' ? 'h-8 px-3' : 'h-9 px-4',
         variant === 'primary' &&
           'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] text-white hover:bg-[rgb(var(--accent-strong))]',
         variant === 'secondary' &&
-          'border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--ink))] hover:bg-[rgb(var(--muted))]',
+          'border-transparent bg-[rgb(var(--muted))] text-[rgb(var(--ink-muted))] hover:text-[rgb(var(--ink))]',
         variant === 'ghost' &&
           'border-transparent text-[rgb(var(--ink-muted))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--ink))]',
         variant === 'danger' &&

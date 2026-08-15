@@ -1,6 +1,6 @@
 # Manzhushaka Console Web Design System Master
 
-> Status: verified  
+> Status: in review
 > Last updated: 2026-08-15  
 > Owner: Manzhushaka Console
 
@@ -22,17 +22,17 @@
 - Primary job: 在一个安全、清晰且可扩展的界面中完成组织、权限、系统、审计和异步数据任务管理。
 - Critical user flow: 登录与验证码 -> 工作台 -> 权限允许的分级菜单 -> 用户/角色管理 -> 创建异步导出 -> 查看进度 -> 获取 5 分钟 BOS 临时下载链接。
 - Deliverable: 可运行、可二次开发、可部署的真实全栈管理后台脚手架，不使用业务 Mock 数据。
-- Mode: from-scratch build。
-- Optimization scope: 不适用，仓库为空。
+- Mode: existing UI optimization。
+- Optimization scope: 完成工作区页签、移动导航、资源操作、异步任务、认证表单和全局反馈的交互闭环；不改变业务 API、权限和数据流，不实现全局命令搜索。
 - Framework and package manager: pnpm workspace、Next.js App Router、NestJS、Prisma、MySQL、独立 Worker。
-- Component library: shadcn/ui、Radix UI、Tailwind CSS、TanStack Table、Lucide Icons。
+- Component library: Arco Design React、Tailwind CSS、TanStack Table、Lucide Icons；布局与品牌组件继续使用本地封装。
 - Supported browsers and viewport range: Chrome、Edge、Safari 最新版及前两个主要版本；桌面完整、平板可用、移动端保障核心流程。
 - Accessibility target: WCAG 2.2 AA；完整键盘焦点、语义标签、对比度与减少动态效果支持。
-- Affected routes and components: 全新应用的登录、工作台、组织权限、系统、安全、运维、任务和个人中心。
-- Adjacent regression surface: 不适用，仓库没有既有行为。
-- Behavior that must remain unchanged: 不适用。
-- Existing UI strengths to retain: 不适用。
-- UI debt and inconsistencies observed: 不适用。
+- Affected routes and components: `/users`、`/roles`、`/menus`、`/departments`、`/system-params`、`/operation-logs`、`/slow-sql`、`/async-tasks` 的共享资源页，以及主题切换、工作区页签和移动导航。
+- Adjacent regression surface: `/login`、`/force-change-password`、`/dashboard` 和侧栏导航。
+- Behavior that must remain unchanged: 路由、页签缓存、筛选状态保留、服务端 API、权限边界、登录流程和响应式断点。
+- Existing UI strengths to retain: Arco 风格的蓝色操作焦点、白色导航、浅灰工作区、低圆角面板、Lucide 图标和中文状态文案。
+- UI debt and inconsistencies observed: Arco 控件默认状态需要与现有语义令牌对齐；资源页空状态、分页和筛选控件需要统一密度；React 19 开发模式兼容性警告需要在浏览器验证中确认影响。
 
 ### Confirmed Product Boundaries
 
@@ -50,23 +50,24 @@
 
 ## 2. Stage Record
 
-| Stage            | Skill                   | Status   | Key output                                                | Gate result                                      |
-| ---------------- | ----------------------- | -------- | --------------------------------------------------------- | ------------------------------------------------ |
-| Visual direction | `frontend-design`       | complete | 冷静运行控制台、权限脊线、克制漆红、数据优先排版          | passed：方向与单租户管理后台、审计和运维场景一致 |
-| Theme system     | `theme-factory`         | complete | Sunset Boulevard 适配：烧橙、珊瑚、暖金与石墨中性基底     | passed：保留主题识别，去除绿色并满足后台对比度   |
-| Implementation   | `web-artifacts-builder` | complete | pnpm monorepo、Next/Nest/Worker、设计令牌、认证与任务骨架 | passed：typecheck、lint、test、build 均通过      |
-| Verification     | `webapp-testing`        | complete | Playwright 桌面/移动截图与交互检查                        | passed：关键页面、主题切换、无控制台错误         |
+| Stage            | Skill                   | Status   | Key output                                                         | Gate result                                 |
+| ---------------- | ----------------------- | -------- | ------------------------------------------------------------------ | ------------------------------------------- |
+| Visual direction | `frontend-design`       | complete | 保留冷静运行控制台、蓝色操作焦点和数据优先排版，收敛 Arco 默认密度 | passed：优化范围与既有品牌和后台任务一致    |
+| Theme system     | `theme-factory`         | complete | 复用已确认主题，并将 Arco 表面、文本、边界和状态变量桥接到语义令牌 | passed：亮暗主题一致，成功态继续使用青色    |
+| Implementation   | `web-artifacts-builder` | complete | 原地审查 Arco 资源页，并桥接现有亮暗主题语义令牌                   | passed：typecheck、lint、test、build 均通过 |
+| Verification     | `webapp-testing`        | complete | Playwright 桌面/移动截图与交互检查                                 | passed：关键页面、主题切换、无控制台错误    |
+| Interaction      | `apple-design`          | complete | 即时按下反馈、可撤销页签、速度感知侧栏、抽屉与减少动态效果         | passed：交互从当前呈现值响应并保留用户控制  |
 
 ## 3. Visual Direction
 
-- Visual thesis: “安静但警觉的运行控制台”。界面像一张经过校准的控制面板，优先呈现层级、状态与可追溯性；品牌感来自精确的漆红标记，而非大面积装饰。
-- Typography roles: 中文正文与界面优先使用苹方/思源黑体系统栈；拉丁标题使用 IBM Plex Sans Variable；编号、时间、请求 ID 和日志使用 JetBrains Mono Variable。标题依靠字重与留白建立层级，不使用夸张字号。
-- Palette direction: 冷中性石墨、纸白和雾灰构成工作面；曼珠沙华漆红用于当前路径与关键动作；青绿、琥珀和蓝青分别表达成功、等待和信息，避免单一色相统治界面。
-- Layout concept: 桌面采用稳定左侧栏、紧凑顶栏和可扫描主工作区；页面标题、筛选条、批量操作与数据表按工作顺序纵向展开。统计指标使用无外框横向带，只有真正重复的数据项和工具面板使用容器。
+- Visual thesis: 参考 Arco Design Pro 的成熟中后台秩序，使用稳定白色导航、浅灰工作区、白色内容面板和高识别度蓝色操作，让页面以数据与任务为中心。
+- Typography roles: 中文正文与界面优先使用苹方/系统无衬线栈；标题同样使用无衬线字体，通过字号、字重与分隔建立层级；编号、时间、请求 ID 和日志使用 JetBrains Mono Variable。
+- Palette direction: 中性白、浅灰和深石墨构成工作面；高纯度蓝用于当前导航、页签和主要动作；青色、橙色和红色表达成功、等待和危险，保持用户确认的不使用绿色约束。
+- Layout concept: 桌面采用 220px 白色侧栏、60px 紧凑顶栏、44px 可缓存页签条和浅灰主工作区；页面内容使用低圆角白色面板，筛选、操作与数据表按工作顺序纵向展开。
 - Content voice: 简体中文、主动语态、短句和明确动词；状态说明给出下一步，不使用营销语或含糊失败文案。
-- Motion approach: 只在侧栏脊线移动、面板进入、实时日志追加和进度更新时使用 120–220ms 动效；减少动态效果模式下取消位移，仅保留必要状态切换。
-- Signature element: “权限脊线”——侧栏中一条 2px 漆红细线连接当前菜单的父级路径，并在页头延续为短横标记，让用户随时知道自己处于哪一层权限上下文。
-- Generic defaults rejected: 拒绝紫蓝渐变、暖米色、发光圆球、过量圆角卡片、营销式大标题和每个指标一张浮卡。最初考虑过深色全屏控制台，但它会牺牲日间高密度数据阅读，因此改为亮色默认、暗色同等完整。
+- Motion approach: 即时按下反馈使用 120ms；侧栏、抽屉和进度更新使用 220ms fluid easing；移动侧栏跟随指针 1:1 位移，释放时结合位置与速度判定，并在反向越界时使用渐进阻尼。减少动态效果模式下取消位移，仅保留必要状态切换。
+- Signature element: 顶栏下方的可缓存多页签工作区，用蓝色底边表达当前页，并保留各页筛选、表单和滚动状态。
+- Generic defaults rejected: 拒绝紫蓝渐变、暖米色、发光圆球、过量圆角卡片、营销式大标题和大面积装饰；采用 Arco 式高密度工作界面，不迁移 Arco Pro 整套模板，也不引入 Ant Design。
 - Existing patterns retained: 不适用。
 - Inconsistent patterns consolidated: 不适用。
 - Weak patterns replaced: 不适用。
@@ -75,15 +76,14 @@
 
 ```text
 ┌──────────────┬────────────────────────────────────────────┐
-│ 品牌 / 状态  │ 面包屑                         搜索  用户  │
-│ ┃ 工作台     ├────────────────────────────────────────────┤
-│ ┃ 组织管理   │ 页面标题 / 说明                 主要操作   │
-│ ┣ 用户管理   │                                            │
-│ ┗ 部门管理   │ 筛选与批量操作                             │
-│   权限管理   │ ────────────────────────────────────────── │
-│   系统管理   │ 数据表 / 详情 / 工具                       │
-│   安全中心   │                                            │
-│   运维管理   │ 分页 / 结果摘要                            │
+│ 品牌         │ 面包屑                         搜索  用户  │
+│ 工作台       ├────────────────────────────────────────────┤
+│ 组织管理     │ 工作台  ×  用户管理  ×  关闭其他           │
+│ 用户管理     ├────────────────────────────────────────────┤
+│ 部门管理     │ 页面标题 / 说明                 主要操作   │
+│ 系统管理     │ 筛选与批量操作                             │
+│ 安全中心     │ 数据表 / 详情 / 工具                       │
+│ 运维管理     │ 分页 / 结果摘要                            │
 └──────────────┴────────────────────────────────────────────┘
 ```
 
@@ -97,100 +97,114 @@
 
 ## 4. Semantic Tokens
 
-主题来源：`theme-factory` 的 Sunset Boulevard。主题的深蓝绿对比色被替换为中性石墨，以符合用户不使用绿色的确认；暖沙色仅作为高亮和警示背景，避免暖米色成为主背景。
+主题基线参考 Arco Design Pro，并适配 Manzhushaka Console 的现有设计令牌与暗色模式；实现采用 Arco Design React 负责数据密集型控件，Tailwind CSS 和本地组件负责布局、品牌和壳层。
 
 ### Color
 
 | Token                    | Light     | Dark      | Meaning                    |
 | ------------------------ | --------- | --------- | -------------------------- |
-| `color.bg.canvas`        | `#F5F6F7` | `#17191B` | 页面工作背景               |
-| `color.bg.surface`       | `#FFFFFF` | `#202326` | 表面、面板与弹层           |
-| `color.bg.muted`         | `#EEF0F1` | `#292D30` | 次级区域与输入底           |
-| `color.text.primary`     | `#1E2427` | `#F5F6F7` | 主文本                     |
-| `color.text.secondary`   | `#5D666B` | `#B7BEC2` | 次级文本                   |
-| `color.border.subtle`    | `#DCE1E3` | `#3B4145` | 边界与分隔                 |
-| `color.action.primary`   | `#E76F51` | `#F08B6D` | 主要动作、品牌焦点         |
-| `color.action.secondary` | `#F4A261` | `#F4A261` | 次级强调                   |
-| `color.action.current`   | `#C94F3B` | `#FF9A7D` | 权限脊线与当前路径         |
-| `color.state.success`    | `#168AAD` | `#53B5D0` | 成功状态，使用青蓝而非绿色 |
-| `color.state.warning`    | `#B87516` | `#E9C46A` | 警告与等待                 |
-| `color.state.danger`     | `#B9382B` | `#FF8170` | 错误、锁定和危险动作       |
-| `color.state.info`       | `#3D6EA8` | `#79A8DF` | 信息状态                   |
-| `color.highlight.warm`   | `#E9C46A` | `#C99738` | 主题高亮，不作为大面积背景 |
+| `color.bg.canvas`        | `#F2F3F5` | `#171A1D` | 页面工作背景               |
+| `color.bg.surface`       | `#FFFFFF` | `#23262A` | 表面、面板与弹层           |
+| `color.bg.muted`         | `#F7F8FA` | `#2E3136` | 次级区域与输入底           |
+| `color.text.primary`     | `#1D2129` | `#F7F8FA` | 主文本                     |
+| `color.text.secondary`   | `#4E5969` | `#AAB0BB` | 次级文本                   |
+| `color.border.subtle`    | `#E5E6EB` | `#393C42` | 边界与分隔                 |
+| `color.action.primary`   | `#165DFF` | `#4080FF` | 主要动作、品牌焦点         |
+| `color.action.secondary` | `#E8F3FF` | `#1D3354` | 当前导航与轻强调背景       |
+| `color.action.current`   | `#0E42D2` | `#94BFFF` | 当前路径与悬停             |
+| `color.state.success`    | `#14C9C9` | `#27C3C3` | 成功状态，使用青色而非绿色 |
+| `color.state.warning`    | `#FF7D00` | `#FF9A2E` | 警告与等待                 |
+| `color.state.danger`     | `#F53F3F` | `#F76560` | 错误、锁定和危险动作       |
+| `color.state.info`       | `#4080FF` | `#6FA5FF` | 信息状态                   |
 
 ### Typography
 
-| Role           | Family                                                      | Size | Weight | Line height | Use                      |
-| -------------- | ----------------------------------------------------------- | ---: | -----: | ----------: | ------------------------ |
-| `type.display` | `DejaVu Serif`, 中文系统衬线回退                            | 28px |    700 |        1.25 | 登录品牌和少量页面主标题 |
-| `type.heading` | `DejaVu Sans`, 中文无衬线回退                               | 20px |    650 |        1.35 | 页面与区块标题           |
-| `type.body`    | `DejaVu Sans`, `PingFang SC`, `Microsoft YaHei`, sans-serif | 14px |    400 |         1.6 | 正文、说明和表单         |
-| `type.ui`      | `DejaVu Sans`, 中文无衬线回退                               | 13px |    550 |        1.35 | 菜单、按钮和标签         |
-| `type.data`    | `JetBrains Mono`, `SFMono-Regular`, monospace               | 12px |    450 |         1.5 | ID、时间、日志和数值     |
+| Role           | Family                                                | Size | Weight | Line height | Use                  |
+| -------------- | ----------------------------------------------------- | ---: | -----: | ----------: | -------------------- |
+| `type.display` | `Inter`, 中文系统无衬线回退                           | 24px |    600 |         1.3 | 登录与工作台主标题   |
+| `type.heading` | `Inter`, 中文系统无衬线回退                           | 16px |    600 |        1.35 | 页面与区块标题       |
+| `type.body`    | `Inter`, `PingFang SC`, `Microsoft YaHei`, sans-serif | 14px |    400 |         1.5 | 正文、说明和表单     |
+| `type.ui`      | `Inter`, 中文系统无衬线回退                           | 14px |    500 |        1.35 | 菜单、按钮和标签     |
+| `type.data`    | `JetBrains Mono`, `SFMono-Regular`, monospace         | 12px |    450 |         1.5 | ID、时间、日志和数值 |
 
 ### Foundations
 
 - Spacing scale: 4 / 8 / 12 / 16 / 20 / 24 / 32px。
-- Radius scale: 4px 控件、6px 工具面板、8px 弹层；页面区域不做浮动卡片。
+- Radius scale: 2px 表格与内容面板、4px 控件与图标底、6px 品牌与预览窗口；避免过量圆角。
 - Border rules: 1px 实线边界，优先使用 `color.border.subtle`；焦点使用 2px action current 外环。
-- Elevation scale: 0 / 1 / 2；只用于弹层、下拉和对话框，不给页面区块加浮动阴影。
+- Elevation scale: 0 / 1 / 2；页面面板以背景色区分，阴影只用于认证卡片、弹层和对话框。
 - Icon family and sizing: Lucide，16px 控件、18px 导航、20px 页面动作；图标按钮提供中文 tooltip。
-- Motion durations and easing: 120ms 状态反馈、180ms 面板、220ms 侧栏；`cubic-bezier(0.22, 1, 0.36, 1)`。
+- Motion durations and easing: `--motion-feedback: 120ms`、`--motion-panel: 220ms`、`--ease-fluid: cubic-bezier(0.22, 1, 0.36, 1)`；手势跟踪期间不添加过渡，释放后才恢复收束动画。
 - Reduced-motion behavior: 关闭位移和连续动画，只保留颜色与透明度状态变化。
+- Arco token bridge: `body` 将 Arco 的 primary、link、success、warning、danger、surface、text、border 和 fill 变量映射到上述语义令牌；暗色模式通过 `arco-theme="dark"` 同步。
 
 ## 5. Layout And Components
 
 - Page regions and content width: 待 Stage 1 与 Stage 2 确认。
 - Responsive breakpoints and behavior: 桌面完整、平板可用、移动端聚焦核心任务。
-- Navigation model: 权限驱动的三级侧栏、统一 13px 菜单字号、父子缩进与连接线、漆红权限脊线、面包屑、移动端抽屉导航。
-- Shared primitives: 待 Stage 3 记录。
+- Navigation model: 权限驱动的三级侧栏、统一 14px 菜单字号、父子缩进与连接线、蓝色当前项、面包屑、可缓存的多页签工作区、移动端手势侧栏导航。页签支持拖动排序、中键关闭、右键菜单、关闭左侧/右侧/其他/全部、溢出滚动与撤销关闭。
+- Scroll model: 控制台外壳固定为一屏，左侧菜单与右侧 Header 始终顶边对齐；左侧导航和右侧工作区独立滚动，页签按路由保存右侧工作区的滚动位置。
+- Shared primitives: `FeedbackProvider` 统一状态提示与撤销动作；`SidePanel` 统一焦点圈定、Escape、来源一致的进出路径；`ConfirmDialog` 只用于未保存内容和取消任务等高风险动作；`PasswordInput` 统一密码可见切换与 Caps Lock 提示。
 - Forms and validation: 前后端共享结构化校验规则，错误提示使用简体中文。
-- Loading, empty, error, success, and disabled states: 所有数据视图和命令必须覆盖。
+- Loading, empty, error, success, and disabled states: 资源筛选、创建抽屉、导出、异步任务、验证码、登录和改密均覆盖进行中、空、错误、成功或禁用状态；服务端接口缺失时明确失败，不写入假数据。
 - Destructive-action behavior: 二次确认、服务端授权、审计记录和不可逆后果说明。
 - Keyboard and focus behavior: 可见焦点、合理 Tab 顺序、弹窗焦点圈定与 Escape 关闭。
 
 ## 6. Implementation
 
 - Routes and entry points: `/login`、`/force-change-password`、`/dashboard`、`/users`、`/roles`、`/menus`、`/departments`、`/system-params`、`/operation-logs`、`/slow-sql`、`/async-tasks`；API 基础路由为 `/api/auth/*` 与 `/api/health`。
-- Component boundaries: `apps/web/components/ui` 保存基础控件，`components/layout` 保存侧栏、壳层和资源列表；API 的认证和 Prisma 连接独立于 Worker 的任务注册表。
+- Component boundaries: `apps/web/components/ui` 保存登录等基础控件，`components/layout` 保存侧栏、壳层和资源列表；当前资源页使用 Arco Table、Input、Button、Pagination，后续表单、权限树和弹窗优先评估 Arco 对应控件；API 的认证和 Prisma 连接独立于 Worker 的任务注册表。
 - State management: 服务端状态优先，客户端请求使用 TanStack Query；短生命周期 UI 状态保持局部。
 - Assets and fonts: 采用系统中文字体回退、DejaVu Serif/Sans 和 JetBrains Mono 字体栈；登录页使用 CSS 几何纹理，不依赖远程图片。
 - Build and static-check commands: `pnpm format:check`、`pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`。
-- Existing dependencies reused: 空仓库，无既有依赖。
-- New dependencies and reasons: Next.js/NestJS/Prisma；shadcn 风格基础控件依赖 Radix 体系的兼容设计；TanStack Query、Lucide、Zod、Argon2、Pino 和 AWS S3 SDK 分别负责请求状态、图标、契约、密码哈希、结构化日志和 BOS S3 兼容签名/上传。
-- Business behavior preserved: 不适用。
-- Functional changes required for working interactions: 全部功能为新建。
-- Unintended file or dependency churn check: 空仓库从零创建；未修改用户既有文件，未生成锁库之外的临时配置。
-- Intentional deviations: 用户指定 Next.js，故不会使用通用构建器的 Vite 脚手架；真实 RDS/BOS 凭证未提供，页面使用真实配置空状态而不是 Mock 数据。
-- Theme adaptation: Sunset Boulevard 的 `#264653` 深蓝绿替换为 `#1E2427` 石墨；成功状态使用青蓝 `#168AAD`，不使用绿色。
+- Existing dependencies reused: 保留 Next.js App Router、Tailwind、next-themes、Lucide、keepalive-for-react 和现有壳层；不替换路由、构建或状态管理。
+- New dependencies and reasons: Next.js/NestJS/Prisma；Arco Design React 负责中后台数据表格、筛选表单、权限树、弹窗和分页；TanStack Query、Lucide、Zod、Argon2、Pino 和 AWS S3 SDK 分别负责请求状态、图标、契约、密码哈希、结构化日志和 BOS S3 兼容签名/上传。
+- Business behavior preserved: 路由、筛选状态、页签缓存、登录流程、服务端 API 和权限边界均保持不变。
+- Functional changes required for working interactions: 增加 Arco 主题变量桥接；状态筛选使用设计令牌化的自定义 `combobox`；资源页增加受控筛选、抽屉表单、字段校验与未保存保护；异步任务增加状态分段、创建、取消、重试、进度与五分钟下载倒计时；认证表单增加密码可见、Caps Lock、验证码刷新和错误聚焦。
+- Unintended file or dependency churn check: 本次未修改业务模块、数据库、API、权限或生成文件；工作树中的其他修改继续保留。
+- Intentional deviations: 这是现有 Next.js 项目的原地优化，因此按编排技能要求未运行 artifact 初始化器或单文件打包；Arco Select 2.66.16 在 React 19 下会由内部 Trigger 访问已移除的 `element.ref` 并产生控制台错误，2.67.0-beta.0 仍未修复，因此状态筛选使用本地可访问 `combobox`；真实 RDS/BOS 凭证未提供，页面继续使用真实配置空状态而不是 Mock 数据。
+- Theme adaptation: 参考 Arco Design Pro 的 `#165DFF` 主要操作色、浅灰工作区和低圆角密度；成功状态使用青色，不使用绿色。
+- Framework integration: Tailwind Preflight 会将 Lucide `svg` 设为块级元素；Arco 按钮的直属图标在全局桥接层恢复为 `inline-block`，确保图标与文字保持同一行并垂直居中。
 
 ## 7. Browser Verification
 
-| Scenario                    | Viewport       | Result | Evidence or issue                                  |
-| --------------------------- | -------------- | ------ | -------------------------------------------------- |
-| Critical user flow          | 1440x960       | passed | 登录页、验证码真实 API、工作台空状态、用户管理路由 |
-| Keyboard navigation         | 1440x960       | passed | 表单、主题按钮、导航链接可定位，焦点样式可见       |
-| Responsive layout           | 390x844        | passed | 登录页移动布局与主内容不溢出                       |
-| Console and page errors     | desktop/mobile | passed | Playwright 未收集到 console error 或 page error    |
-| Preserved behavior          | N/A            | passed | 全新项目，无既有行为。                             |
-| Adjacent regression surface | N/A            | passed | 全新项目，无相邻回归面。                           |
+| Scenario                    | Viewport       | Result | Evidence or issue                                                    |
+| --------------------------- | -------------- | ------ | -------------------------------------------------------------------- |
+| Critical user flow          | 1440x960       | passed | 登录页、工作台空状态、用户/角色路由和资源页筛选控件可用              |
+| Arco integration and theme  | 1440x960       | passed | Table、Input、Button、Pagination 已渲染，亮暗主题计算色匹配语义令牌  |
+| Keyboard navigation         | 1440x960       | passed | 通过真实 Tab 导航定位查询按钮，焦点外环可见                          |
+| Responsive layout           | 390x844        | passed | 登录页、用户页和抽屉导航可用，document 无横向溢出                    |
+| 多页签页面缓存              | 1440x960       | passed | 用户页输入筛选后切换角色页，再返回仍保留输入状态                     |
+| 独立滚动与顶边对齐          | 1440x600       | passed | 右侧滚动 220px 后 Header 与侧栏仍为 top 0，返回页签恢复滚动位置      |
+| Console and page errors     | desktop/mobile | passed | Playwright 未收集到 console error 或 page error，React 19 报错已消除 |
+| Preserved behavior          | 1440x960       | passed | 路由、筛选输入、页签缓存、主题切换和导航分组行为保持                 |
+| Adjacent regression surface | desktop/mobile | passed | 登录、工作台、用户、角色、侧栏和移动抽屉已覆盖                       |
 
 - Server command and URL: `python3 /Users/manzhushaka/.codex/skills/webapp-testing/scripts/with_server.py --server "pnpm --filter @manzhushaka/api start:dev" --port 4000 --server "pnpm --filter @manzhushaka/web dev" --port 3000`；Web: `http://localhost:3000`。
 - Browser-test command: `python3 /Users/manzhushaka/.codex/skills/webapp-testing/scripts/with_server.py --server "pnpm --filter @manzhushaka/api start:dev" --port 4000 --server "pnpm --filter @manzhushaka/web dev" --port 3000 -- python3 scripts/browser_check.py`。
-- Screenshots: `/Users/manzhushaka/.codex/visualizations/2026/08/15/01a0039d-ba10-7c40-a381-01db6d7dcdb7/login-desktop.png`、`login-mobile.png`、`users-dark.png`。
+- Screenshots: `/Users/manzhushaka/.codex/visualizations/2026/08/15/01a005cc-db97-7142-bdd8-40e2d43f3496/login-desktop.png`、`login-mobile.png`、`users-light.png`、`users-dark.png`、`users-scrolled.png`、`users-mobile-menu.png`。
 - Failed requests: 无关键页面失败请求；未配置 RDS 时健康检查按预期返回数据库不可用。
-- Residual risks or blockers: 本地 RDS 已完成独立数据库、迁移、种子和真实登录验证；BOS 凭证尚未提供，因此 BOS 签名下载和真实文件任务仍需配置后做集成验证；当前示例导出处理器不会生成虚假业务文件。
+- Residual risks or blockers: Arco Select 在 React 19 兼容问题修复前保持原生控件；本地 RDS 已完成独立数据库、迁移、种子和真实登录验证；BOS 凭证尚未提供，因此 BOS 签名下载和真实文件任务仍需配置后做集成验证；当前示例导出处理器不会生成虚假业务文件。
 
 ## 8. Decisions And Change Log
 
-| Date       | Decision or change                            | Reason                                                   | Confirmed by      |
-| ---------- | --------------------------------------------- | -------------------------------------------------------- | ----------------- |
-| 2026-08-15 | 采用 pnpm 单仓库与 Next.js/NestJS/Worker 分层 | 兼顾企业级边界、共享契约与独立部署                       | User              |
-| 2026-08-15 | 使用 shadcn/ui 体系并拒绝 Ant Design          | 需要更现代且可定制的视觉系统                             | User              |
-| 2026-08-15 | 使用 MySQL RDS 与 Prisma，禁止数据库重置      | 本地和服务器可能共享真实数据库                           | User              |
-| 2026-08-15 | 使用百度 BOS 私有存储与 5 分钟签名链接        | 统一异步任务文件的安全下载链路                           | User              |
-| 2026-08-15 | 使用角色并集、服务端数据权限与分级菜单        | 保证授权语义清晰且可审计                                 | User              |
-| 2026-08-15 | 指定所有必要代码注释使用中文                  | 统一项目维护习惯                                         | User              |
-| 2026-08-15 | 采用冷静运行控制台视觉与漆红权限脊线          | 让品牌识别服务于导航和权限上下文，而不是装饰             | Stage 1           |
-| 2026-08-15 | 选择并适配 Sunset Boulevard                   | 用户明确选择主题，同时排除绿色并控制暖沙色面积           | User / Stage 2    |
-| 2026-08-15 | 完成从零实现与浏览器验证                      | 建立可运行的真实配置空状态、认证骨架、任务抽象和设计系统 | Stage 3 / Stage 4 |
+| Date       | Decision or change                            | Reason                                                       | Confirmed by       |
+| ---------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------ |
+| 2026-08-15 | 采用 pnpm 单仓库与 Next.js/NestJS/Worker 分层 | 兼顾企业级边界、共享契约与独立部署                           | User               |
+| 2026-08-15 | 使用 shadcn/ui 体系并拒绝 Ant Design          | 需要更现代且可定制的视觉系统                                 | User               |
+| 2026-08-15 | 使用 MySQL RDS 与 Prisma，禁止数据库重置      | 本地和服务器可能共享真实数据库                               | User               |
+| 2026-08-15 | 使用百度 BOS 私有存储与 5 分钟签名链接        | 统一异步任务文件的安全下载链路                               | User               |
+| 2026-08-15 | 使用角色并集、服务端数据权限与分级菜单        | 保证授权语义清晰且可审计                                     | User               |
+| 2026-08-15 | 指定所有必要代码注释使用中文                  | 统一项目维护习惯                                             | User               |
+| 2026-08-15 | 采用冷静运行控制台视觉与漆红权限脊线          | 让品牌识别服务于导航和权限上下文，而不是装饰                 | Stage 1            |
+| 2026-08-15 | 选择并适配 Sunset Boulevard                   | 用户明确选择主题，同时排除绿色并控制暖沙色面积               | User / Stage 2     |
+| 2026-08-15 | 完成从零实现与浏览器验证                      | 建立可运行的真实配置空状态、认证骨架、任务抽象和设计系统     | Stage 3 / Stage 4  |
+| 2026-08-15 | 增加多页签工作区与页面缓存                    | 让管理员在多个资源页之间切换时保留筛选、表单和滚动状态       | User               |
+| 2026-08-15 | 整体视觉调整为 Arco Design Pro 参考方向       | 提升中后台成熟度，并保留 Tailwind 壳层与设计令牌             | User               |
+| 2026-08-15 | 引入 Arco Design React 作为数据密集型控件层   | 复用表格、筛选、分页和后续权限树/弹窗能力，降低重复实现成本  | User               |
+| 2026-08-15 | 状态筛选改用本地令牌化 combobox               | 消除 Arco Trigger 在 React 19 下访问 `element.ref` 的错误    | Stage 4            |
+| 2026-08-15 | 修正 Arco 按钮中的 Lucide 图标布局            | 避免 Tailwind Preflight 导致图标独占一行、文字溢出按钮       | User               |
+| 2026-08-15 | 控制台改为左右区域独立滚动                    | 保持侧栏与吸顶 Header 对齐，并保留各页签滚动位置             | User               |
+| 2026-08-15 | 状态筛选改为令牌化自定义下拉                  | 避免原生 `select` 展开层受浏览器接管导致视觉密度和主题不一致 | User               |
+| 2026-08-15 | 不实现全局命令搜索                            | 用户明确排除该交互                                           | User               |
+| 2026-08-15 | 完成交互闭环与 Apple 式直接操控               | 强化即时反馈、用户控制、空间一致性和移动手势连续性           | User / Interaction |
