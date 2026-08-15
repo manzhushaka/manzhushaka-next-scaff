@@ -188,6 +188,11 @@ find "${bundle_dir}" -type l -print -quit | grep -q . && {
   echo "Runtime package contains a symbolic link." >&2
   exit 1
 }
+while IFS= read -r -d '' linked_file; do
+  replacement="${linked_file}.release-copy.$$"
+  cp -p "${linked_file}" "${replacement}"
+  mv "${replacement}" "${linked_file}"
+done < <(find "${bundle_dir}" -type f -links +1 -print0)
 find "${bundle_dir}" -type f -print | sed "s#^${bundle_dir}/##" | LC_ALL=C sort > "${bundle_dir}/.release-manifest"
 tar -C "${bundle_dir}" -czf "${out_dir}/release.tar.gz" .
 
