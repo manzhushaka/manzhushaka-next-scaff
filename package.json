@@ -1,0 +1,41 @@
+{
+  "name": "manzhushaka-console",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.6.2",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm run dev:local",
+    "dev:local": "dotenv -e .env -- concurrently -k -n WEB,API,WORKER -c blue,magenta,cyan \"pnpm --filter @manzhushaka/web dev\" \"pnpm --filter @manzhushaka/api start:dev\" \"pnpm --filter @manzhushaka/worker dev\"",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "dotenv -e .env -- tsx prisma/seed.ts",
+    "bootstrap:admin": "dotenv -e .env -- tsx prisma/bootstrap-admin.ts",
+    "dev:prod-like": "pnpm run build && pnpm run start:prod",
+    "start:prod": "concurrently -k -n WEB,API,WORKER -c blue,magenta,cyan \"pnpm --filter @manzhushaka/web start\" \"pnpm --filter @manzhushaka/api start\" \"pnpm --filter @manzhushaka/worker start\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "concurrently": "^9.1.2",
+    "dotenv-cli": "^8.0.0",
+    "@prisma/client": "^6.6.0",
+    "@eslint/js": "^9.22.0",
+    "@next/eslint-plugin-next": "^15.5.23",
+    "prisma": "^6.6.0",
+    "eslint": "^9.22.0",
+    "globals": "^15.15.0",
+    "mysql2": "^3.14.1",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.26.0"
+  }
+}

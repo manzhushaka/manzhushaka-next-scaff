@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  LOCKED
+  DELETED
+}
+
+enum MenuType {
+  DIRECTORY
+  PAGE
+  EXTERNAL
+  BUTTON
+}
+
+enum TaskType {
+  IMPORT
+  EXPORT
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  CANCELED
+}
+
+model User {
+  id                 String    @id @default(cuid()) @db.VarChar(30)
+  username           String    @unique @db.VarChar(64)
+  passwordHash       String    @db.VarChar(255)
+  displayName        String    @db.VarChar(80)
+  email              String?   @db.VarChar(255)
+  mobile             String?   @db.VarChar(32)
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean   @default(true)
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime?
+  departmentId       String?   @db.VarChar(30)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  department         Department? @relation(fields: [departmentId], references: [id])
+  roles              UserRole[]
+  sessions           Session[]
+  auditLogs          AuditLog[] @relation("AuditActor")
+  tasks              AsyncTask[]
+  notifications      Notification[]
+
+  @@index([status, deletedAt])
+}
+
+model Department {
+  id        String       @id @default(cuid()) @db.VarChar(30)
+  name      String       @db.VarChar(100)
+  parentId  String?      @db.VarChar(30)
+  sort      Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+  parent    Department?  @relation("DepartmentTree", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentTree")
+  users     User[]
+
+  @@index([parentId, sort])
+}
+
+model Role {
+  id          String       @id @default(cuid()) @db.VarChar(30)
+  name        String       @unique @db.VarChar(80)
+  code        String       @unique @db.VarChar(80)
+  description String?      @db.VarChar(255)
+  dataScope   String       @default("SELF") @db.VarChar(32)
+  builtin     Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  userId String @db.VarChar(30)
+  roleId String @db.VarChar(30)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Menu {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  parentId  String?  @db.VarChar(30)
+  name      String   @db.VarChar(80)
+  code      String   @unique @db.VarChar(120)
+  type      MenuType
+  path      String?  @db.VarChar(255)
+  icon      String?  @db.VarChar(80)
+  sort      Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  parent    Menu?    @relation("MenuTree", fields: [parentId], references: [id])
+  children  Menu[]   @relation("MenuTree")
+  roles     RolePermission[]
+
+  @@index([parentId, sort])
+}
+
+model RolePermission {
+  roleId       String @db.VarChar(30)
+  menuId       String @db.VarChar(30)
+  role         Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  menu         Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, menuId])
+}
+
+model Session {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  tokenHash String   @unique @db.VarChar(128)
+  userId    String   @db.VarChar(30)
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(500)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  actorId    String?  @db.VarChar(30)
+  action     String   @db.VarChar(80)
+  resource   String   @db.VarChar(120)
+  resourceId String?  @db.VarChar(120)
+  method     String?  @db.VarChar(16)
+  path       String?  @db.VarChar(255)
+  result     String   @db.VarChar(32)
+  ip         String?  @db.VarChar(64)
+  userAgent  String?  @db.VarChar(500)
+  durationMs Int?
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt, action])
+  @@index([actorId, createdAt])
+}
+
+model SlowSqlLog {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  durationMs Int
+  model      String?  @db.VarChar(120)
+  action     String?  @db.VarChar(80)
+  queryHash  String   @db.VarChar(64)
+  queryText  String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt, durationMs])
+}
+
+model AsyncTask {
+  id            String     @id @default(cuid()) @db.VarChar(30)
+  type          TaskType
+  handler      String     @db.VarChar(120)
+  status        TaskStatus @default(PENDING)
+  createdById   String     @db.VarChar(30)
+  fileKey       String?    @db.VarChar(500)
+  errorFileKey  String?    @db.VarChar(500)
+  resultFileKey String?    @db.VarChar(500)
+  total         Int        @default(0)
+  processed     Int        @default(0)
+  successCount  Int        @default(0)
+  failureCount  Int        @default(0)
+  payloadJson   Json?
+  errorMessage  String?    @db.Text
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  createdBy     User       @relation(fields: [createdById], references: [id])
+
+  @@index([createdById, createdAt])
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  userId    String   @db.VarChar(30)
+  title     String   @db.VarChar(120)
+  content   String   @db.VarChar(500)
+  level     String   @default("INFO") @db.VarChar(16)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model SystemParameter {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  key         String   @unique @db.VarChar(120)
+  value       String   @db.Text
+  encrypted   Boolean  @default(false)
+  description String?  @db.VarChar(255)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}

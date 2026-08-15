@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: 245 246 247;
+  --surface: 255 255 255;
+  --muted: 238 240 241;
+  --ink: 30 36 39;
+  --ink-muted: 93 102 107;
+  --line: 220 225 227;
+  --accent: 231 111 81;
+  --accent-strong: 201 79 59;
+  --coral: 244 162 97;
+  --success: 22 138 173;
+  --warning: 184 117 22;
+  --danger: 185 56 43;
+  --info: 61 110 168;
+}
+
+.dark {
+  --canvas: 23 25 27;
+  --surface: 32 35 38;
+  --muted: 41 45 48;
+  --ink: 245 246 247;
+  --ink-muted: 183 190 194;
+  --line: 59 65 69;
+  --accent: 240 139 109;
+  --accent-strong: 255 154 125;
+  --coral: 244 162 97;
+  --success: 83 181 208;
+  --warning: 233 196 106;
+  --danger: 255 129 112;
+  --info: 121 168 223;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: rgb(var(--canvas));
+}
+body {
+  margin: 0;
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  font-family: 'DejaVu Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+::selection {
+  background: rgb(var(--coral) / 0.32);
+}
+:focus-visible {
+  outline: 2px solid rgb(var(--accent-strong));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
