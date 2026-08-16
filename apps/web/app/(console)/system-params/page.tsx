@@ -1,5 +1,5 @@
-import { ConsoleRouteView } from '../../../components/layout/console-views';
+import { SystemBrandingPage } from '../../../components/layout/system-branding-page';
 
 export default function SystemParamsPage() {
-  return <ConsoleRouteView pathname="/system-params" />;
+  return <SystemBrandingPage />;
 }

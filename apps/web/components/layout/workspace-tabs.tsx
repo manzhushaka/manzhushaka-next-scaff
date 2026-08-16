@@ -19,6 +19,7 @@ const TAB_TITLES: Record<string, string> = {
   '/departments': '部门管理',
   '/system-params': '系统参数',
   '/operation-logs': '操作日志',
+  '/runtime-logs': '运行日志',
   '/slow-sql': '慢 SQL',
   '/async-tasks': '异步任务',
 };

@@ -25,6 +25,7 @@ export const envSchema = z.object({
   LOGIN_MAX_FAILURES: z.coerce.number().int().positive().default(5),
   LOGIN_LOCK_MINUTES: z.coerce.number().int().positive().default(10),
   SLOW_SQL_THRESHOLD_MS: z.coerce.number().int().positive().default(300),
+  LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(14),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

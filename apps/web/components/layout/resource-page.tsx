@@ -91,7 +91,7 @@ function StatusSelect({
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative w-full">
       <button
         ref={buttonRef}
         type="button"
@@ -298,10 +298,10 @@ export function ResourcePage({
 
         <form
           onSubmit={runQuery}
-          className="grid gap-x-6 gap-y-4 border-b border-[rgb(var(--line))] pb-5 lg:grid-cols-2"
+          className="flex flex-col gap-4 border-b border-[rgb(var(--line))] pb-5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6"
         >
-          <label className="grid items-center gap-2 sm:grid-cols-[88px_1fr]">
-            <span className="text-sm text-[rgb(var(--ink-muted))]">关键词</span>
+          <label className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[max-content_360px]">
+            <span className="whitespace-nowrap text-sm text-[rgb(var(--ink-muted))]">关键词</span>
             <ArcoInput
               allowClear
               prefix={<Search size={15} />}
@@ -311,11 +311,11 @@ export function ResourcePage({
               onChange={setKeyword}
             />
           </label>
-          <label className="grid items-center gap-2 sm:grid-cols-[88px_1fr]">
-            <span className="text-sm text-[rgb(var(--ink-muted))]">状态</span>
+          <label className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[max-content_176px]">
+            <span className="whitespace-nowrap text-sm text-[rgb(var(--ink-muted))]">状态</span>
             <StatusSelect value={status} onChange={setStatus} />
           </label>
-          <div className="flex items-center gap-2 lg:col-span-2 lg:justify-end">
+          <div className="flex items-center gap-2 lg:ml-auto">
             <ArcoButton htmlType="submit" type="primary" size="small" icon={<Search size={14} />}>
               查询
             </ArcoButton>

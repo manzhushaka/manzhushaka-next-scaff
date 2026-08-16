@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@manzhushaka/contracts": "workspace:*",
     "@prisma/client": "^6.6.0",
     "pino": "^9.6.0",
     "tsx": "^4.19.3"

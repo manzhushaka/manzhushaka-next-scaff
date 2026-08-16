@@ -70,14 +70,6 @@ const resources: Record<
     action: '新增部门',
     columns: ['部门名称', '上级部门', '负责人', '成员数', '状态'],
   },
-  '/system-params': {
-    eyebrow: 'SYSTEM / PARAMETERS',
-    title: '系统参数',
-    description: '配置验证码、日志保留、慢 SQL 阈值和 BOS 连接状态。密钥只读私有环境配置。',
-    icon: Database,
-    action: '新增参数',
-    columns: ['参数名称', '参数键', '类型', '当前值', '更新时间'],
-  },
   '/operation-logs': {
     eyebrow: 'SECURITY / AUDIT',
     title: '操作日志',

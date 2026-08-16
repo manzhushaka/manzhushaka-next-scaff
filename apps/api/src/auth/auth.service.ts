@@ -1,4 +1,9 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { randomInt, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma.service.js';
 import { loadEnv } from '@manzhushaka/config';
@@ -133,6 +138,34 @@ export class AuthService {
       include: { user: { include: { roles: true } } },
     });
     return session?.user ?? null;
+  }
+
+  async requirePermission(token: string | undefined, permissionCode: string) {
+    const user = await this.getUserBySession(token);
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'SESSION_INVALID',
+        message: '登录已过期，请重新登录。',
+      });
+    }
+    const roles = await this.prisma.userRole.findMany({
+      where: { userId: user.id },
+      include: { role: true },
+    });
+    if (roles.some(({ role }) => role.code === 'super_admin')) return user;
+    const permission = await this.prisma.rolePermission.findFirst({
+      where: {
+        roleId: { in: roles.map(({ roleId }) => roleId) },
+        menu: { code: permissionCode },
+      },
+    });
+    if (!permission) {
+      throw new ForbiddenException({
+        code: 'PERMISSION_DENIED',
+        message: '当前账户没有执行此操作的权限。',
+      });
+    }
+    return user;
   }
 
   async changePassword(userId: string, currentPassword: string, nextPassword: string) {

@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   ListTree,
   ShieldCheck,
+  ScrollText,
   Users,
   X,
 } from 'lucide-react';
@@ -25,6 +26,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { cn } from '../../lib/cn';
+import { BrandMark } from './brand-mark';
+import { useSystemBranding } from '../system-branding-provider';
 
 const groups = [
   {
@@ -52,6 +55,7 @@ const groups = [
     icon: ShieldCheck,
     items: [
       { label: '操作日志', href: '/operation-logs', icon: ClipboardList },
+      { label: '运行日志', href: '/runtime-logs', icon: ScrollText },
       { label: '慢 SQL', href: '/slow-sql', icon: Activity },
     ],
   },
@@ -146,6 +150,7 @@ export function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { branding } = useSystemBranding();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const asideRef = useRef<HTMLElement>(null);
@@ -272,15 +277,16 @@ export function Sidebar({
       >
         <div className="flex h-[60px] items-center justify-between border-b border-[rgb(var(--line))] px-5">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-            <span className="grid h-8 w-8 place-items-center rounded-[6px] bg-[rgb(var(--accent))] text-lg font-bold text-white">
-              M
-            </span>
+            <BrandMark className="h-8 w-8 rounded-[6px] bg-[rgb(var(--accent))] text-lg font-bold text-white" />
             <span>
               <strong className="block text-[15px] font-semibold tracking-wide text-[rgb(var(--ink))]">
-                Manzhushaka
+                {branding.shortName}
               </strong>
-              <small className="block text-[10px] uppercase tracking-[.16em] text-[rgb(var(--ink-muted))]">
-                Console
+              <small
+                className="block max-w-[132px] truncate text-[10px] text-[rgb(var(--ink-muted))]"
+                title={branding.systemName}
+              >
+                {branding.systemName}
               </small>
             </span>
           </Link>

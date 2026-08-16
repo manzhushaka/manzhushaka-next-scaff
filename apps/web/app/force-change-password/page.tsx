@@ -5,8 +5,11 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '../../components/ui/button';
 import { PasswordInput } from '../../components/ui/password-input';
 import { cn } from '../../lib/cn';
+import { BrandMark } from '../../components/layout/brand-mark';
+import { useSystemBranding } from '../../components/system-branding-provider';
 
 export default function ForceChangePasswordPage() {
+  const { branding } = useSystemBranding();
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -55,10 +58,11 @@ export default function ForceChangePasswordPage() {
   return (
     <main className="min-h-screen bg-[rgb(var(--canvas))]">
       <header className="flex h-[60px] items-center gap-3 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-6">
-        <span className="grid h-8 w-8 place-items-center rounded-[6px] bg-[rgb(var(--accent))] text-base font-bold text-white">
-          M
-        </span>
-        <span className="font-semibold">Manzhushaka Console</span>
+        <BrandMark
+          className="h-8 w-8 rounded-[6px] bg-[rgb(var(--accent))] text-base font-bold text-white"
+          imageClassName="p-1"
+        />
+        <span className="max-w-[320px] truncate font-semibold">{branding.systemName}</span>
       </header>
       <div className="grid min-h-[calc(100vh-60px)] place-items-center px-6 py-12">
         <section className="w-full max-w-[440px] rounded-[2px] bg-[rgb(var(--surface))] p-8 shadow-[0_2px_8px_rgb(0_0_0/0.06)]">

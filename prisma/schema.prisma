@@ -35,6 +35,14 @@ enum TaskStatus {
   CANCELED
 }
 
+enum RuntimeLogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
 model User {
   id                 String    @id @default(cuid()) @db.VarChar(30)
   username           String    @unique @db.VarChar(64)
@@ -173,6 +181,20 @@ model SlowSqlLog {
   createdAt  DateTime @default(now())
 
   @@index([createdAt, durationMs])
+}
+
+model RuntimeLog {
+  id          String          @id @default(cuid()) @db.VarChar(30)
+  level       RuntimeLogLevel
+  service     String          @db.VarChar(32)
+  message     String          @db.Text
+  contextJson Json?
+  stack       String?         @db.Text
+  createdAt   DateTime        @default(now())
+
+  @@index([createdAt, id])
+  @@index([service, createdAt])
+  @@index([level, createdAt])
 }
 
 model AsyncTask {

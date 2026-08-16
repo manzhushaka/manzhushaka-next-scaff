@@ -24,6 +24,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
     '/departments': ['组织管理', '部门管理'],
     '/system-params': ['系统管理', '系统参数'],
     '/operation-logs': ['安全中心', '操作日志'],
+    '/runtime-logs': ['安全中心', '运行日志'],
     '/slow-sql': ['安全中心', '慢 SQL'],
     '/async-tasks': ['运维管理', '异步任务'],
   }[pathname] ?? ['管理后台', '页面'];

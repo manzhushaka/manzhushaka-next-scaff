@@ -1,13 +1,17 @@
 from pathlib import Path
 import os
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 from playwright.sync_api import sync_playwright
 
 
-ARTIFACTS = Path('/Users/manzhushaka/.codex/visualizations/2026/08/15/01a005cc-db97-7142-bdd8-40e2d43f3496')
+ARTIFACTS = Path('/Users/manzhushaka/.codex/visualizations/2026/08/16/01a0098a-0aae-7872-9010-89a64c6c85ba')
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 BASE_URL = os.getenv('WEB_BASE_URL', 'http://localhost:3000')
+EXPECTED_UNAUTHORIZED_API_PATHS = (
+    '/api/system-parameters/branding',
+    '/api/runtime-logs',
+)
 
 
 def inspect_page(page, name: str, width: int, height: int) -> None:
@@ -15,16 +19,40 @@ def inspect_page(page, name: str, width: int, height: int) -> None:
     page.goto(f'{BASE_URL}/login', wait_until='networkidle')
     page.wait_for_timeout(500)
     page.screenshot(path=str(ARTIFACTS / f'{name}.png'), full_page=True)
-    assert page.get_by_role('heading', name='欢迎回来').is_visible()
+    assert page.get_by_role('heading', name='登录管理后台').is_visible()
     assert page.get_by_label('用户名').is_visible()
     assert page.get_by_role('button', name='刷新验证码').is_visible()
+    assert page.get_by_alt_text('Manzhushaka Console 工作台预览').count() == 0
+    if width >= 1024:
+        description = page.locator('[data-login-description]').bounding_box()
+        login_form = page.locator('[data-login-form]').bounding_box()
+        assert description and login_form
+        assert description['x'] < login_form['x'], '登录说明应位于表单左侧'
+        width_ratio = description['width'] / login_form['width']
+        assert 0.9 <= width_ratio <= 1.1, '登录说明与表单区域应接近等宽'
 
 
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True)
     page = browser.new_page()
     errors: list[str] = []
-    page.on('console', lambda message: errors.append(f'console:{message.type}:{message.text}') if message.type == 'error' else None)
+
+    def inspect_console(message) -> None:
+        if message.type != 'error':
+            return
+        if message.text == 'Failed to load resource: the server responded with a status of 401 (Unauthorized)':
+            return
+        errors.append(f'console:{message.type}:{message.text}')
+
+    def inspect_response(response) -> None:
+        if response.status != 401:
+            return
+        path = urlparse(response.url).path
+        if not any(path.endswith(api_path) for api_path in EXPECTED_UNAUTHORIZED_API_PATHS):
+            errors.append(f'unexpected-401:{response.url}')
+
+    page.on('console', inspect_console)
+    page.on('response', inspect_response)
     page.on('pageerror', lambda error: errors.append(f'pageerror:{error}'))
 
     inspect_page(page, 'login-desktop', 1440, 960)
@@ -35,6 +63,15 @@ with sync_playwright() as playwright:
     page.goto(f'{BASE_URL}/dashboard', wait_until='networkidle')
     assert page.get_by_role('heading', name='欢迎回来').is_visible()
     assert page.get_by_text('等待运行数据').is_visible()
+    page.goto(f'{BASE_URL}/system-params', wait_until='domcontentloaded')
+    page.get_by_role('heading', name='系统品牌').wait_for(state='visible')
+    assert page.get_by_label('系统名称').is_visible()
+    assert page.get_by_label('品牌简称').is_visible()
+    assert page.get_by_label('登录标题').is_visible()
+    assert page.get_by_role('heading', name='品牌资源').is_visible()
+    assert page.get_by_role('button', name='上传图片').count() == 2
+    assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
+    page.screenshot(path=str(ARTIFACTS / 'system-branding-desktop.png'), full_page=True)
     page.get_by_label('主导航').get_by_role('link', name='用户管理').click()
     page.wait_for_url('**/users')
     page.get_by_role('heading', name='用户管理').wait_for(state='visible')
@@ -168,8 +205,24 @@ with sync_playwright() as playwright:
     task_panel.get_by_role('button', name='关闭', exact=True).click()
     assert not task_panel.is_visible()
 
+    page.goto(f'{BASE_URL}/runtime-logs', wait_until='domcontentloaded')
+    page.get_by_role('heading', name='运行日志').wait_for(state='visible')
+    assert page.get_by_role('tab', name='Info', exact=True).is_visible()
+    assert page.get_by_label('日志服务').is_visible()
+    assert page.get_by_label('日志关键词').is_visible()
+    page.get_by_role('button', name='暂停刷新').click()
+    assert page.get_by_role('button', name='继续刷新').is_visible()
+    assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
+    page.screenshot(path=str(ARTIFACTS / 'runtime-logs-desktop.png'), full_page=True)
+
     page.set_viewport_size({'width': 390, 'height': 844})
-    page.goto(f'{BASE_URL}/users', wait_until='networkidle')
+    page.goto(f'{BASE_URL}/system-params', wait_until='domcontentloaded')
+    page.get_by_role('heading', name='系统品牌').wait_for(state='visible')
+    assert page.get_by_label('系统名称').is_visible()
+    assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
+    page.screenshot(path=str(ARTIFACTS / 'system-branding-mobile.png'), full_page=True)
+    page.goto(f'{BASE_URL}/users', wait_until='domcontentloaded')
+    page.get_by_role('button', name='打开菜单', exact=True).wait_for(state='visible')
     assert page.get_by_role('button', name='打开菜单', exact=True).is_visible()
     assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
     page.get_by_role('button', name='打开菜单', exact=True).click()
@@ -183,6 +236,10 @@ with sync_playwright() as playwright:
     page.mouse.up()
     page.wait_for_timeout(250)
     assert sidebar.evaluate('(element) => element.getBoundingClientRect().right <= 1')
+    page.goto(f'{BASE_URL}/runtime-logs', wait_until='domcontentloaded')
+    page.get_by_role('heading', name='运行日志').wait_for(state='visible')
+    assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
+    page.screenshot(path=str(ARTIFACTS / 'runtime-logs-mobile.png'), full_page=True)
 
     username = os.getenv('ADMIN_USERNAME')
     password = os.getenv('ADMIN_PASSWORD')
@@ -194,7 +251,7 @@ with sync_playwright() as playwright:
         assert match, '验证码图片内容不可读取'
         page.get_by_label('用户名').fill(username)
         page.get_by_label('密码').fill(password)
-        page.get_by_placeholder('输入图中数字').fill(match.group(1))
+        page.get_by_placeholder('输入图片验证码').fill(match.group(1))
         page.get_by_role('button', name='进入控制台').click()
         page.wait_for_url('**/force-change-password')
         assert page.get_by_text('首次登录安全设置').is_visible()

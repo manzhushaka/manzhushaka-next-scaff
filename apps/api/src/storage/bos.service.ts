@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { loadEnv } from '@manzhushaka/config';
 
@@ -42,6 +47,17 @@ export class BosStorageService {
         Body: body,
         ContentType: contentType,
         ServerSideEncryption: 'AES256',
+      }),
+    );
+  }
+
+  async deleteObject(key: string) {
+    if (!this.client || !this.env.BOS_BUCKET) throw new Error('BOS 尚未配置。');
+    if (!key || key.includes('..') || key.startsWith('/')) throw new Error('对象 Key 不合法。');
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.env.BOS_BUCKET,
+        Key: key,
       }),
     );
   }
