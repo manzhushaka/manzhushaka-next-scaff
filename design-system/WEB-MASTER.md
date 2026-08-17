@@ -146,7 +146,7 @@
 - Scroll model: 控制台外壳固定为一屏，左侧菜单与右侧 Header 始终顶边对齐；左侧导航和右侧工作区独立滚动，页签按路由保存右侧工作区的滚动位置。
 - Shared primitives: `FeedbackProvider` 统一状态提示与撤销动作；`SidePanel` 统一焦点圈定、Escape、来源一致的进出路径；`ConfirmDialog` 只用于未保存内容和取消任务等高风险动作；`PasswordInput` 统一密码可见切换与 Caps Lock 提示。
 - Forms and validation: 前后端共享结构化校验规则，错误提示使用简体中文。
-- Filter bar density: 桌面端筛选标签与控件以 12px 间距紧邻成组，关键词输入框固定为 360px、枚举下拉框固定为 176px；操作按钮靠右，窄屏控件占满剩余宽度。
+- Filter bar density: 桌面端筛选标签与控件以 12px 间距紧邻成组，关键词输入框固定为 360px、枚举下拉框固定为 176px；操作按钮靠右，窄屏控件占满剩余宽度。菜单权限页额外提供节点类型、可见状态、层级和创建时间范围筛选，日期范围使用起止日期并校验起始日期不晚于结束日期。
 - System branding form: 系统名称、品牌简称和登录标题使用同一基础信息区；Logo 与 favicon 使用独立上传行、稳定预览尺寸和明确移除动作，窄屏保持纵向可操作。
 - Loading, empty, error, success, and disabled states: 资源筛选、创建抽屉、导出、异步任务、验证码、登录和改密均覆盖进行中、空、错误、成功或禁用状态；服务端接口缺失时明确失败，不写入假数据。
 - Runtime logs: 运行日志使用独立表格页面，级别通过语义状态色与文字双重表达；支持服务、级别、关键词筛选、上下文展开、游标加载和三秒实时刷新，实时刷新始终提供暂停控制。
@@ -164,7 +164,7 @@
 - Existing dependencies reused: 保留 Next.js App Router、Tailwind、next-themes、Lucide、keepalive-for-react 和现有壳层；不替换路由、构建或状态管理。
 - New dependencies and reasons: Next.js/NestJS/Prisma；Arco Design React 负责中后台数据表格、筛选表单、权限树、弹窗和分页；TanStack Query、Lucide、Zod、Argon2、Pino 和 AWS S3 SDK 分别负责请求状态、图标、契约、密码哈希、结构化日志和 BOS S3 兼容签名/上传。
 - Business behavior preserved: 路由、筛选状态、页签缓存和登录流程保持不变；系统品牌新增独立读写权限、白名单公开读取、上传内容校验和审计边界。
-- Functional changes required for working interactions: 增加 Arco 主题变量桥接；状态筛选使用设计令牌化的自定义 `combobox`；资源页增加受控筛选、抽屉表单、字段校验与未保存保护；异步任务增加状态分段、创建、取消、重试、进度与五分钟下载倒计时；认证表单增加密码可见、Caps Lock、验证码刷新和错误聚焦。
+- Functional changes required for working interactions: 增加 Arco 主题变量桥接；状态筛选使用设计令牌化的自定义 `combobox`；资源页增加受控筛选、抽屉表单、字段校验与未保存保护；菜单权限页按业务维度提供节点类型、可见状态、层级和创建时间范围筛选；异步任务增加状态分段、创建、取消、重试、进度与五分钟下载倒计时；认证表单增加密码可见、Caps Lock、验证码刷新和错误聚焦。
 - Unintended file or dependency churn check: 系统品牌只复用既有 `SystemParameter`、`AuditLog`、RBAC 和 BOS 能力，未增加依赖或数据库结构迁移；工作树中的其他修改继续保留。
 - Intentional deviations: 这是现有 Next.js 项目的原地优化，因此按编排技能要求未运行 artifact 初始化器或单文件打包；Arco Select 2.66.16 在 React 19 下会由内部 Trigger 访问已移除的 `element.ref` 并产生控制台错误，2.67.0-beta.0 仍未修复，因此状态筛选使用本地可访问 `combobox`；真实 RDS/BOS 凭证未提供，页面继续使用真实配置空状态而不是 Mock 数据。
 - Theme adaptation: 参考 Arco Design Pro 的 `#165DFF` 主要操作色、浅灰工作区和低圆角密度；成功状态使用青色，不使用绿色。
@@ -178,6 +178,7 @@
 | Arco integration and theme  | 1440x960       | passed | Table、Input、Button、Pagination 已渲染，亮暗主题计算色匹配语义令牌  |
 | Keyboard navigation         | 1440x960       | passed | 通过真实 Tab 导航定位查询按钮，焦点外环可见                          |
 | Responsive layout           | 390x844        | passed | 登录页、用户页和抽屉导航可用，document 无横向溢出                    |
+| 菜单业务筛选                | desktop/mobile | passed | 节点类型、可见状态、层级、日期校验和重置可用，移动端无横向溢出       |
 | 多页签页面缓存              | 1440x960       | passed | 用户页输入筛选后切换角色页，再返回仍保留输入状态                     |
 | 独立滚动与顶边对齐          | 1440x600       | passed | 右侧滚动 220px 后 Header 与侧栏仍为 top 0，返回页签恢复滚动位置      |
 | Console and page errors     | desktop/mobile | passed | Playwright 未收集到 console error 或 page error，React 19 报错已消除 |
@@ -192,29 +193,30 @@
 
 ## 8. Decisions And Change Log
 
-| Date       | Decision or change                            | Reason                                                       | Confirmed by       |
-| ---------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------ |
-| 2026-08-15 | 采用 pnpm 单仓库与 Next.js/NestJS/Worker 分层 | 兼顾企业级边界、共享契约与独立部署                           | User               |
-| 2026-08-15 | 使用 shadcn/ui 体系并拒绝 Ant Design          | 需要更现代且可定制的视觉系统                                 | User               |
-| 2026-08-15 | 使用 MySQL RDS 与 Prisma，禁止数据库重置      | 本地和服务器可能共享真实数据库                               | User               |
-| 2026-08-15 | 使用百度 BOS 私有存储与 5 分钟签名链接        | 统一异步任务文件的安全下载链路                               | User               |
-| 2026-08-15 | 使用角色并集、服务端数据权限与分级菜单        | 保证授权语义清晰且可审计                                     | User               |
-| 2026-08-15 | 指定所有必要代码注释使用中文                  | 统一项目维护习惯                                             | User               |
-| 2026-08-15 | 采用冷静运行控制台视觉与漆红权限脊线          | 让品牌识别服务于导航和权限上下文，而不是装饰                 | Stage 1            |
-| 2026-08-15 | 选择并适配 Sunset Boulevard                   | 用户明确选择主题，同时排除绿色并控制暖沙色面积               | User / Stage 2     |
-| 2026-08-15 | 完成从零实现与浏览器验证                      | 建立可运行的真实配置空状态、认证骨架、任务抽象和设计系统     | Stage 3 / Stage 4  |
-| 2026-08-15 | 增加多页签工作区与页面缓存                    | 让管理员在多个资源页之间切换时保留筛选、表单和滚动状态       | User               |
-| 2026-08-15 | 整体视觉调整为 Arco Design Pro 参考方向       | 提升中后台成熟度，并保留 Tailwind 壳层与设计令牌             | User               |
-| 2026-08-15 | 引入 Arco Design React 作为数据密集型控件层   | 复用表格、筛选、分页和后续权限树/弹窗能力，降低重复实现成本  | User               |
-| 2026-08-15 | 状态筛选改用本地令牌化 combobox               | 消除 Arco Trigger 在 React 19 下访问 `element.ref` 的错误    | Stage 4            |
-| 2026-08-15 | 修正 Arco 按钮中的 Lucide 图标布局            | 避免 Tailwind Preflight 导致图标独占一行、文字溢出按钮       | User               |
-| 2026-08-15 | 控制台改为左右区域独立滚动                    | 保持侧栏与吸顶 Header 对齐，并保留各页签滚动位置             | User               |
-| 2026-08-15 | 状态筛选改为令牌化自定义下拉                  | 避免原生 `select` 展开层受浏览器接管导致视觉密度和主题不一致 | User               |
-| 2026-08-15 | 不实现全局命令搜索                            | 用户明确排除该交互                                           | User               |
-| 2026-08-15 | 完成交互闭环与 Apple 式直接操控               | 强化即时反馈、用户控制、空间一致性和移动手势连续性           | User / Interaction |
-| 2026-08-16 | 登录页调整为左侧说明、右侧表单                | 符合认证操作习惯，并用能力链路替代后台截图展示               | User               |
-| 2026-08-16 | 登录页参考 Haiqi Agent Pro 重构信息层级       | 使用等宽双栏、运行边界面板与工具化认证表单，减少大色块压迫感 | User               |
-| 2026-08-16 | 收紧资源页顶部筛选栏                          | 避免下拉框过宽，并让筛选标签与对应控件保持清晰邻接           | User               |
-| 2026-08-16 | 系统参数首期聚焦品牌配置                      | 让系统名称、简称、登录标题、Logo 和 favicon 形成真实保存闭环 | User               |
-| 2026-08-16 | 品牌资源使用私有 BOS 与稳定 API 地址          | 避免数据库 Base64 和公开 Bucket，并保持五分钟签名策略        | Security           |
-| 2026-08-16 | 增加在线运行日志页面与统一日志存储            | 让管理员按级别实时查看 API、Worker 日志并保持权限与脱敏边界  | User               |
+| Date       | Decision or change                            | Reason                                                               | Confirmed by       |
+| ---------- | --------------------------------------------- | -------------------------------------------------------------------- | ------------------ |
+| 2026-08-15 | 采用 pnpm 单仓库与 Next.js/NestJS/Worker 分层 | 兼顾企业级边界、共享契约与独立部署                                   | User               |
+| 2026-08-15 | 使用 shadcn/ui 体系并拒绝 Ant Design          | 需要更现代且可定制的视觉系统                                         | User               |
+| 2026-08-15 | 使用 MySQL RDS 与 Prisma，禁止数据库重置      | 本地和服务器可能共享真实数据库                                       | User               |
+| 2026-08-15 | 使用百度 BOS 私有存储与 5 分钟签名链接        | 统一异步任务文件的安全下载链路                                       | User               |
+| 2026-08-15 | 使用角色并集、服务端数据权限与分级菜单        | 保证授权语义清晰且可审计                                             | User               |
+| 2026-08-15 | 指定所有必要代码注释使用中文                  | 统一项目维护习惯                                                     | User               |
+| 2026-08-15 | 采用冷静运行控制台视觉与漆红权限脊线          | 让品牌识别服务于导航和权限上下文，而不是装饰                         | Stage 1            |
+| 2026-08-15 | 选择并适配 Sunset Boulevard                   | 用户明确选择主题，同时排除绿色并控制暖沙色面积                       | User / Stage 2     |
+| 2026-08-15 | 完成从零实现与浏览器验证                      | 建立可运行的真实配置空状态、认证骨架、任务抽象和设计系统             | Stage 3 / Stage 4  |
+| 2026-08-15 | 增加多页签工作区与页面缓存                    | 让管理员在多个资源页之间切换时保留筛选、表单和滚动状态               | User               |
+| 2026-08-15 | 整体视觉调整为 Arco Design Pro 参考方向       | 提升中后台成熟度，并保留 Tailwind 壳层与设计令牌                     | User               |
+| 2026-08-15 | 引入 Arco Design React 作为数据密集型控件层   | 复用表格、筛选、分页和后续权限树/弹窗能力，降低重复实现成本          | User               |
+| 2026-08-15 | 状态筛选改用本地令牌化 combobox               | 消除 Arco Trigger 在 React 19 下访问 `element.ref` 的错误            | Stage 4            |
+| 2026-08-15 | 修正 Arco 按钮中的 Lucide 图标布局            | 避免 Tailwind Preflight 导致图标独占一行、文字溢出按钮               | User               |
+| 2026-08-15 | 控制台改为左右区域独立滚动                    | 保持侧栏与吸顶 Header 对齐，并保留各页签滚动位置                     | User               |
+| 2026-08-15 | 状态筛选改为令牌化自定义下拉                  | 避免原生 `select` 展开层受浏览器接管导致视觉密度和主题不一致         | User               |
+| 2026-08-15 | 不实现全局命令搜索                            | 用户明确排除该交互                                                   | User               |
+| 2026-08-15 | 完成交互闭环与 Apple 式直接操控               | 强化即时反馈、用户控制、空间一致性和移动手势连续性                   | User / Interaction |
+| 2026-08-16 | 登录页调整为左侧说明、右侧表单                | 符合认证操作习惯，并用能力链路替代后台截图展示                       | User               |
+| 2026-08-16 | 登录页参考 Haiqi Agent Pro 重构信息层级       | 使用等宽双栏、运行边界面板与工具化认证表单，减少大色块压迫感         | User               |
+| 2026-08-16 | 收紧资源页顶部筛选栏                          | 避免下拉框过宽，并让筛选标签与对应控件保持清晰邻接                   | User               |
+| 2026-08-16 | 系统参数首期聚焦品牌配置                      | 让系统名称、简称、登录标题、Logo 和 favicon 形成真实保存闭环         | User               |
+| 2026-08-16 | 品牌资源使用私有 BOS 与稳定 API 地址          | 避免数据库 Base64 和公开 Bucket，并保持五分钟签名策略                | Security           |
+| 2026-08-16 | 增加在线运行日志页面与统一日志存储            | 让管理员按级别实时查看 API、Worker 日志并保持权限与脱敏边界          | User               |
+| 2026-08-17 | 扩展菜单权限页筛选条件                        | 菜单模型没有通用启停状态，改为按节点类型、可见性、层级和创建时间筛选 | User               |

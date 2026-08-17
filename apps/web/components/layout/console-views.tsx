@@ -12,7 +12,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { ResourcePage } from './resource-page';
+import { ResourcePage, type ResourceFilter } from './resource-page';
 import { AsyncTasksPage } from './async-tasks-page';
 
 const signals = [
@@ -29,6 +29,38 @@ const shortcuts = [
   { label: '异步任务', href: '/async-tasks', icon: FileDown },
 ];
 
+const menuFilters = [
+  {
+    key: 'type',
+    label: '节点类型',
+    options: [
+      { value: 'all', label: '全部类型' },
+      { value: 'DIRECTORY', label: '目录' },
+      { value: 'PAGE', label: '页面' },
+      { value: 'EXTERNAL', label: '外链' },
+      { value: 'BUTTON', label: '按钮' },
+    ],
+  },
+  {
+    key: 'visibility',
+    label: '可见状态',
+    options: [
+      { value: 'all', label: '全部状态' },
+      { value: 'visible', label: '侧栏可见' },
+      { value: 'hidden', label: '侧栏隐藏' },
+    ],
+  },
+  {
+    key: 'hierarchy',
+    label: '层级',
+    options: [
+      { value: 'all', label: '全部层级' },
+      { value: 'root', label: '顶级节点' },
+      { value: 'child', label: '子级节点' },
+    ],
+  },
+] satisfies readonly ResourceFilter[];
+
 const resources: Record<
   string,
   {
@@ -38,6 +70,9 @@ const resources: Record<
     icon: LucideIcon;
     columns: string[];
     action?: string;
+    keywordPlaceholder?: string;
+    filters?: readonly ResourceFilter[];
+    dateRangeFilter?: { key: string; label: string };
   }
 > = {
   '/users': {
@@ -60,7 +95,10 @@ const resources: Record<
     description: '维护目录、页面、外链和按钮权限，侧栏按层级动态生成。',
     icon: ListTree,
     action: '新增节点',
-    columns: ['名称', '权限编码', '类型', '路径', '可见', '排序'],
+    keywordPlaceholder: '名称 / 权限编码 / 路径',
+    columns: ['名称', '权限编码', '类型', '路径', '父级节点', '可见', '排序', '创建时间'],
+    filters: menuFilters,
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/departments': {
     eyebrow: 'ORGANIZATION / DEPARTMENTS',

@@ -19,20 +19,35 @@ import { SidePanel } from '../ui/side-panel';
 
 type ResourceRow = Record<string, string>;
 
+export type ResourceFilterOption = { value: string; label: string };
+
+export type ResourceFilter = {
+  key: string;
+  label: string;
+  options: readonly ResourceFilterOption[];
+};
+
+export type ResourceDateRangeFilter = {
+  key: string;
+  label: string;
+};
+
 const statusOptions = [
   { value: 'all', label: '全部状态' },
   { value: 'active', label: '正常' },
   { value: 'disabled', label: '停用' },
 ] as const;
 
-type StatusValue = (typeof statusOptions)[number]['value'];
-
-function StatusSelect({
+function FilterSelect({
+  label,
+  options,
   value,
   onChange,
 }: {
-  value: StatusValue;
-  onChange: (value: StatusValue) => void;
+  label: string;
+  options: readonly ResourceFilterOption[];
+  value: string;
+  onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -40,7 +55,10 @@ function StatusSelect({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listboxId = useId();
   const activeOptionId = listboxId + '-option-' + String(highlightedIndex);
-  const selectedOption = statusOptions.find((option) => option.value === value) ?? statusOptions[0];
+  const selectedOption = options.find((option) => option.value === value) ?? {
+    value: '',
+    label: '',
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +80,7 @@ function StatusSelect({
   }, [open]);
 
   function selectOption(index: number) {
-    const option = statusOptions[index];
+    const option = options[index];
     if (!option) return;
     onChange(option.value);
     setHighlightedIndex(index);
@@ -75,12 +93,15 @@ function StatusSelect({
       event.preventDefault();
       if (!open) {
         setOpen(true);
-        setHighlightedIndex(statusOptions.findIndex((option) => option.value === value));
+        setHighlightedIndex(
+          Math.max(
+            0,
+            options.findIndex((option) => option.value === value),
+          ),
+        );
       } else {
         const direction = event.key === 'ArrowDown' ? 1 : -1;
-        setHighlightedIndex(
-          (highlightedIndex + direction + statusOptions.length) % statusOptions.length,
-        );
+        setHighlightedIndex((highlightedIndex + direction + options.length) % options.length);
       }
       return;
     }
@@ -99,11 +120,16 @@ function StatusSelect({
         aria-controls={open ? listboxId : undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="状态"
+        aria-label={label}
         aria-activedescendant={open ? activeOptionId : undefined}
         onClick={() => {
           setOpen((current) => !current);
-          setHighlightedIndex(statusOptions.findIndex((option) => option.value === value));
+          setHighlightedIndex(
+            Math.max(
+              0,
+              options.findIndex((option) => option.value === value),
+            ),
+          );
         }}
         onKeyDown={handleButtonKeyDown}
         className={cn(
@@ -127,10 +153,10 @@ function StatusSelect({
         <div
           id={listboxId}
           role="listbox"
-          aria-label="状态选项"
+          aria-label={label + '选项'}
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 overflow-hidden rounded-[4px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-overlay)]"
         >
-          {statusOptions.map((option, index) => {
+          {options.map((option, index) => {
             const selected = option.value === value;
             const highlighted = index === highlightedIndex;
             return (
@@ -167,6 +193,9 @@ export function ResourcePage({
   icon: Icon,
   columns,
   action = '新增记录',
+  keywordPlaceholder = '搜索当前资源',
+  filters = [{ key: 'status', label: '状态', options: statusOptions }],
+  dateRangeFilter,
 }: {
   eyebrow: string;
   title: string;
@@ -174,13 +203,23 @@ export function ResourcePage({
   icon: React.ComponentType<{ size?: number }>;
   columns: string[];
   action?: string;
+  keywordPlaceholder?: string;
+  filters?: readonly ResourceFilter[];
+  dateRangeFilter?: ResourceDateRangeFilter;
 }) {
   const { notify } = useFeedback();
   const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState<StatusValue>('all');
+  const defaultFilterValues = Object.fromEntries(
+    filters.map((filter) => [filter.key, filter.options[0]?.value ?? 'all']),
+  );
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(defaultFilterValues);
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
   const [appliedFilters, setAppliedFilters] = useState({
     keyword: '',
-    status: 'all' as StatusValue,
+    filterValues: defaultFilterValues,
+    createdFrom: '',
+    createdTo: '',
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -218,11 +257,26 @@ export function ResourcePage({
       ),
     },
   ];
-  const hasAppliedFilters = Boolean(appliedFilters.keyword) || appliedFilters.status !== 'all';
+  const hasAppliedFilters =
+    Boolean(appliedFilters.keyword || appliedFilters.createdFrom || appliedFilters.createdTo) ||
+    Object.values(appliedFilters.filterValues).some((value) => value !== 'all');
 
   function runQuery(event?: FormEvent) {
     event?.preventDefault();
-    setAppliedFilters({ keyword: keyword.trim(), status });
+    if (createdFrom && createdTo && createdFrom > createdTo) {
+      notify({
+        title: '创建时间范围无效',
+        description: '起始日期不能晚于结束日期。',
+        tone: 'warning',
+      });
+      return;
+    }
+    setAppliedFilters({
+      keyword: keyword.trim(),
+      filterValues: { ...filterValues },
+      createdFrom,
+      createdTo,
+    });
     notify({
       title: '查询条件已应用',
       description: '资源接口接入后将使用当前条件请求服务端数据。',
@@ -232,8 +286,15 @@ export function ResourcePage({
 
   function resetQuery() {
     setKeyword('');
-    setStatus('all');
-    setAppliedFilters({ keyword: '', status: 'all' });
+    setFilterValues(defaultFilterValues);
+    setCreatedFrom('');
+    setCreatedTo('');
+    setAppliedFilters({
+      keyword: '',
+      filterValues: defaultFilterValues,
+      createdFrom: '',
+      createdTo: '',
+    });
     notify({ title: '筛选条件已重置', tone: 'success' });
   }
 
@@ -305,16 +366,54 @@ export function ResourcePage({
             <ArcoInput
               allowClear
               prefix={<Search size={15} />}
-              placeholder="搜索当前资源"
-              aria-label="搜索当前资源"
+              placeholder={keywordPlaceholder}
+              aria-label={keywordPlaceholder}
               value={keyword}
               onChange={setKeyword}
             />
           </label>
-          <label className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[max-content_176px]">
-            <span className="whitespace-nowrap text-sm text-[rgb(var(--ink-muted))]">状态</span>
-            <StatusSelect value={status} onChange={setStatus} />
-          </label>
+          {filters.map((filter) => (
+            <label
+              key={filter.key}
+              className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[max-content_176px]"
+            >
+              <span className="whitespace-nowrap text-sm text-[rgb(var(--ink-muted))]">
+                {filter.label}
+              </span>
+              <FilterSelect
+                label={filter.label}
+                options={filter.options}
+                value={filterValues[filter.key] ?? filter.options[0]?.value ?? 'all'}
+                onChange={(value) =>
+                  setFilterValues((current) => ({ ...current, [filter.key]: value }))
+                }
+              />
+            </label>
+          ))}
+          {dateRangeFilter ? (
+            <label className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[max-content_auto]">
+              <span className="whitespace-nowrap text-sm text-[rgb(var(--ink-muted))]">
+                {dateRangeFilter.label}
+              </span>
+              <span className="flex min-w-0 items-center gap-2">
+                <input
+                  type="date"
+                  value={createdFrom}
+                  aria-label={dateRangeFilter.label + '起始日期'}
+                  onChange={(event) => setCreatedFrom(event.target.value)}
+                  className="h-8 min-w-0 w-[142px] rounded-[2px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors focus:border-[rgb(var(--accent))] focus:shadow-[0_0_0_2px_rgb(var(--accent)/0.12)]"
+                />
+                <span className="shrink-0 text-xs text-[rgb(var(--ink-muted))]">至</span>
+                <input
+                  type="date"
+                  value={createdTo}
+                  aria-label={dateRangeFilter.label + '结束日期'}
+                  onChange={(event) => setCreatedTo(event.target.value)}
+                  className="h-8 min-w-0 w-[142px] rounded-[2px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors focus:border-[rgb(var(--accent))] focus:shadow-[0_0_0_2px_rgb(var(--accent)/0.12)]"
+                />
+              </span>
+            </label>
+          ) : null}
           <div className="flex items-center gap-2 lg:ml-auto">
             <ArcoButton htmlType="submit" type="primary" size="small" icon={<Search size={14} />}>
               查询
