@@ -12,15 +12,21 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { ResourcePage, type ResourceFilter } from './resource-page';
+import { useEffect, useState } from 'react';
+import {
+  ResourcePage,
+  type ResourceColumn,
+  type ResourceField,
+  type ResourceFilter,
+} from './resource-page';
 import { AsyncTasksPage } from './async-tasks-page';
 
-const signals = [
-  { label: '用户总数', value: '—', caption: '等待数据库连接', icon: Users },
-  { label: '在线会话', value: '—', caption: '等待会话服务', icon: ShieldCheck },
-  { label: '待处理任务', value: '—', caption: '等待 Worker', icon: FileDown },
-  { label: '慢 SQL', value: '—', caption: '等待查询监控', icon: Database },
-];
+const userStatusOptions = [
+  { value: 'all', label: '全部状态' },
+  { value: 'ACTIVE', label: '正常' },
+  { value: 'DISABLED', label: '停用' },
+  { value: 'LOCKED', label: '锁定' },
+] as const;
 
 const shortcuts = [
   { label: '用户管理', href: '/users', icon: Users },
@@ -42,12 +48,12 @@ const menuFilters = [
     ],
   },
   {
-    key: 'visibility',
+    key: 'visible',
     label: '可见状态',
     options: [
       { value: 'all', label: '全部状态' },
-      { value: 'visible', label: '侧栏可见' },
-      { value: 'hidden', label: '侧栏隐藏' },
+      { value: 'true', label: '侧栏可见' },
+      { value: 'false', label: '侧栏隐藏' },
     ],
   },
   {
@@ -68,8 +74,10 @@ const resources: Record<
     title: string;
     description: string;
     icon: LucideIcon;
-    columns: string[];
+    columns: readonly ResourceColumn[];
+    apiPath: string;
     action?: string;
+    fields?: readonly ResourceField[];
     keywordPlaceholder?: string;
     filters?: readonly ResourceFilter[];
     dateRangeFilter?: { key: string; label: string };
@@ -80,23 +88,78 @@ const resources: Record<
     title: '用户管理',
     description: '管理账号状态、所属部门、角色和初始密码策略。',
     icon: Users,
-    columns: ['用户名', '显示名称', '主部门', '角色', '状态', '最近登录'],
+    apiPath: '/users',
+    action: '新增用户',
+    columns: [
+      { key: 'username', label: '用户名' },
+      { key: 'displayName', label: '显示名称' },
+      { key: 'department', label: '主部门' },
+      { key: 'roles', label: '角色' },
+      { key: 'status', label: '状态' },
+      { key: 'createdAt', label: '创建时间', format: 'datetime' },
+    ],
+    fields: [
+      { key: 'username', label: '用户名', required: true },
+      { key: 'displayName', label: '显示名称', required: true },
+      { key: 'password', label: '初始密码', type: 'password', requiredWhenCreating: true },
+      { key: 'email', label: '邮箱' },
+      { key: 'mobile', label: '手机号' },
+      { key: 'departmentId', label: '部门 ID' },
+      { key: 'status', label: '账号状态', type: 'select', options: userStatusOptions, defaultValue: 'ACTIVE' },
+    ],
+    filters: [{ key: 'status', label: '状态', options: userStatusOptions }],
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/roles': {
     eyebrow: 'ORGANIZATION / ROLES',
     title: '角色管理',
     description: '按角色分配菜单、按钮、API 和数据范围权限。',
     icon: KeyRound,
-    columns: ['角色名称', '编码', '数据范围', '成员数', '更新时间'],
+    apiPath: '/roles',
+    action: '新增角色',
+    columns: [
+      { key: 'name', label: '角色名称' },
+      { key: 'code', label: '编码' },
+      { key: 'dataScope', label: '数据范围' },
+      { key: 'memberCount', label: '成员数' },
+      { key: 'updatedAt', label: '更新时间', format: 'datetime' },
+    ],
+    fields: [
+      { key: 'name', label: '角色名称', required: true },
+      { key: 'code', label: '编码', required: true },
+      { key: 'description', label: '说明' },
+      { key: 'dataScope', label: '数据范围', defaultValue: 'SELF' },
+    ],
+    filters: [],
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/menus': {
     eyebrow: 'ORGANIZATION / PERMISSIONS',
     title: '菜单权限',
     description: '维护目录、页面、外链和按钮权限，侧栏按层级动态生成。',
     icon: ListTree,
+    apiPath: '/menus',
     action: '新增节点',
     keywordPlaceholder: '名称 / 权限编码 / 路径',
-    columns: ['名称', '权限编码', '类型', '路径', '父级节点', '可见', '排序', '创建时间'],
+    columns: [
+      { key: 'name', label: '名称' },
+      { key: 'code', label: '权限编码' },
+      { key: 'type', label: '类型' },
+      { key: 'path', label: '路径' },
+      { key: 'parentName', label: '父级节点' },
+      { key: 'visible', label: '可见', format: 'boolean' },
+      { key: 'sort', label: '排序' },
+      { key: 'createdAt', label: '创建时间', format: 'datetime' },
+    ],
+    fields: [
+      { key: 'name', label: '名称', required: true },
+      { key: 'code', label: '权限编码', required: true },
+      { key: 'type', label: '节点类型', type: 'select', required: true, options: menuFilters[0]!.options, defaultValue: 'PAGE' },
+      { key: 'path', label: '路径' },
+      { key: 'parentId', label: '父级节点 ID' },
+      { key: 'sort', label: '排序', type: 'number', defaultValue: '0' },
+      { key: 'visible', label: '侧栏可见', type: 'boolean', defaultValue: 'true' },
+    ],
     filters: menuFilters,
     dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
@@ -105,36 +168,119 @@ const resources: Record<
     title: '部门管理',
     description: '维护组织树、主部门和岗位归属。',
     icon: Users,
+    apiPath: '/departments',
     action: '新增部门',
-    columns: ['部门名称', '上级部门', '负责人', '成员数', '状态'],
+    columns: [
+      { key: 'name', label: '部门名称' },
+      { key: 'parentName', label: '上级部门' },
+      { key: 'memberCount', label: '成员数' },
+      { key: 'childCount', label: '子部门' },
+      { key: 'createdAt', label: '创建时间', format: 'datetime' },
+    ],
+    fields: [
+      { key: 'name', label: '部门名称', required: true },
+      { key: 'parentId', label: '上级部门 ID' },
+      { key: 'sort', label: '排序', type: 'number', defaultValue: '0' },
+    ],
+    filters: [menuFilters[2]!],
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/operation-logs': {
     eyebrow: 'SECURITY / AUDIT',
     title: '操作日志',
     description: '查看可追溯的操作审计，敏感字段会在入库前脱敏。',
     icon: ShieldCheck,
-    action: '导出日志',
-    columns: ['时间', '操作人', '动作', '资源', '结果', '来源 IP'],
+    apiPath: '/audit-logs',
+    columns: [
+      { key: 'createdAt', label: '时间', format: 'datetime' },
+      { key: 'actor', label: '操作人' },
+      { key: 'action', label: '动作' },
+      { key: 'resource', label: '资源' },
+      { key: 'result', label: '结果' },
+      { key: 'ip', label: '来源 IP' },
+    ],
+    filters: [],
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/slow-sql': {
     eyebrow: 'SECURITY / QUERY MONITOR',
     title: '慢 SQL',
     description: '查看超过阈值的查询，参数默认脱敏，帮助定位数据层瓶颈。',
     icon: Activity,
-    action: '导出记录',
-    columns: ['发生时间', '耗时', '模型', '动作', '查询摘要'],
+    apiPath: '/slow-sql',
+    columns: [
+      { key: 'createdAt', label: '发生时间', format: 'datetime' },
+      { key: 'durationMs', label: '耗时（ms）' },
+      { key: 'model', label: '模型' },
+      { key: 'action', label: '动作' },
+      { key: 'queryText', label: '查询摘要' },
+    ],
+    filters: [],
+    dateRangeFilter: { key: 'createdAt', label: '创建时间' },
   },
   '/async-tasks': {
     eyebrow: 'OPERATIONS / ASYNC TASKS',
     title: '异步任务',
     description: '跟踪导入、导出进度和错误报告，完成后通过 BOS 临时链接下载。',
     icon: FileDown,
+    apiPath: '/async-tasks',
     action: '创建任务',
-    columns: ['任务类型', '处理器', '进度', '状态', '创建时间', '文件'],
+    columns: [
+      { key: 'type', label: '任务类型' },
+      { key: 'handler', label: '处理器' },
+      { key: 'processed', label: '已处理' },
+      { key: 'status', label: '状态' },
+      { key: 'createdAt', label: '创建时间', format: 'datetime' },
+      { key: 'fileKey', label: '文件' },
+    ],
   },
 };
 
 function DashboardView() {
+  const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+  const [summary, setSummary] = useState<{
+    users: number;
+    activeSessions: number;
+    pendingTasks: number;
+    slowSqlLast24Hours: number;
+    activity: Array<{ hour: string; count: number }>;
+  } | null>(null);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    fetch(api + '/api/dashboard/summary', { credentials: 'include', cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json().catch(() => null) as
+          | { message?: string; users?: number; activeSessions?: number; pendingTasks?: number; slowSqlLast24Hours?: number; activity?: Array<{ hour: string; count: number }> }
+          | null;
+        if (!response.ok) throw new Error(body?.message ?? '工作台数据请求失败。');
+        if (active && body?.users !== undefined) {
+          setSummary({
+            users: body.users,
+            activeSessions: body.activeSessions ?? 0,
+            pendingTasks: body.pendingTasks ?? 0,
+            slowSqlLast24Hours: body.slowSqlLast24Hours ?? 0,
+            activity: body.activity ?? [],
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : '请稍后重试。');
+      });
+    return () => {
+      active = false;
+    };
+  }, [api]);
+
+  const signals = [
+    { label: '用户总数', value: summary?.users ?? '—', caption: summary ? '已同步用户目录' : loadError || '正在加载', icon: Users },
+    { label: '在线会话', value: summary?.activeSessions ?? '—', caption: summary ? '当前有效会话' : loadError || '正在加载', icon: ShieldCheck },
+    { label: '待处理任务', value: summary?.pendingTasks ?? '—', caption: summary ? '等待或处理中' : loadError || '正在加载', icon: FileDown },
+    { label: '慢 SQL', value: summary?.slowSqlLast24Hours ?? '—', caption: summary ? '最近 24 小时' : loadError || '正在加载', icon: Database },
+  ];
+  const activityMaximum = Math.max(1, ...((summary?.activity ?? []).map((item) => item.count)));
+
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-4">
@@ -172,12 +318,7 @@ function DashboardView() {
               <h2 className="font-semibold">运行趋势</h2>
               <p className="mt-1 text-xs text-[rgb(var(--ink-muted))]">最近 24 小时系统活动</p>
             </div>
-            <button
-              type="button"
-              className="text-xs font-medium text-[rgb(var(--accent))] hover:text-[rgb(var(--accent-strong))]"
-            >
-              查看详情
-            </button>
+            <Link href="/operation-logs" className="text-xs font-medium text-[rgb(var(--accent))] hover:text-[rgb(var(--accent-strong))]">查看详情</Link>
           </div>
           <div className="relative min-h-[300px] overflow-hidden pt-5">
             <div
@@ -191,14 +332,12 @@ function DashboardView() {
                 />
               ))}
             </div>
-            <div className="relative grid min-h-[250px] place-items-center text-center">
-              <div className="rounded-[2px] bg-[rgb(var(--surface))] px-6 py-4">
-                <Activity size={22} className="mx-auto mb-3 text-[rgb(var(--accent))]" />
-                <p className="text-sm font-medium">等待运行数据</p>
-                <p className="mt-1 text-xs text-[rgb(var(--ink-muted))]">
-                  API 与 Worker 启动后显示真实趋势
-                </p>
-              </div>
+            <div className="relative flex min-h-[250px] items-end gap-1 px-1">
+              {summary?.activity.length ? summary.activity.map((item) => (
+                <span key={item.hour} title={new Date(item.hour).toLocaleString('zh-CN') + '：' + String(item.count) + ' 次'} className="min-w-0 flex-1 rounded-t-[2px] bg-[rgb(var(--accent))]/75" style={{ height: String(Math.max(2, Math.round((item.count / activityMaximum) * 100))) + '%' }} />
+              )) : (
+                <div className="mx-auto text-center"><Activity size={22} className="mx-auto mb-3 text-[rgb(var(--accent))]" /><p className="text-sm font-medium">{loadError ? '无法加载运行数据' : '正在加载运行数据'}</p><p className="mt-1 text-xs text-[rgb(var(--ink-muted))]">{loadError || '最近 24 小时系统活动'}</p></div>
+              )}
             </div>
             <div className="relative flex justify-between text-[11px] text-[rgb(var(--ink-muted))]">
               <span>00:00</span>

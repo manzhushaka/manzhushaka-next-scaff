@@ -19,6 +19,34 @@ export const taskStatusSchema = z.enum([
 ]);
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
+export const resourceQuerySchema = z.object({
+  keyword: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.string().trim().min(1).max(32).optional(),
+  type: z.string().trim().min(1).max(32).optional(),
+  visible: z.enum(['true', 'false']).optional(),
+  parentId: z.string().trim().max(30).optional(),
+  hierarchy: z.enum(['root', 'child']).optional(),
+  createdFrom: z.string().date().optional(),
+  createdTo: z.string().date().optional(),
+});
+export type ResourceQuery = z.infer<typeof resourceQuerySchema>;
+
+export const resourceListSchema = z.object({
+  items: z.array(z.record(z.string(), z.unknown())),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+});
+
+export const asyncTaskCreateSchema = z.object({
+  type: z.enum(['IMPORT', 'EXPORT']),
+  handler: z.string().trim().min(1).max(120),
+  payload: z.record(z.string(), z.unknown()).optional(),
+});
+export type AsyncTaskCreate = z.infer<typeof asyncTaskCreateSchema>;
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),

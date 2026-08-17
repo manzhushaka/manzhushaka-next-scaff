@@ -21,6 +21,7 @@ async function main() {
     ['用户管理', 'organization:users', 'PAGE', '/users'],
     ['角色管理', 'organization:roles', 'PAGE', '/roles'],
     ['菜单权限', 'organization:menus', 'PAGE', '/menus'],
+    ['部门管理', 'organization:departments', 'PAGE', '/departments'],
     ['系统管理', 'system', 'DIRECTORY', null],
     ['系统参数', 'system:parameters', 'PAGE', '/system-params'],
     ['安全中心', 'security', 'DIRECTORY', null],

@@ -8,8 +8,8 @@ import {
   Table,
   type TableColumnProps,
 } from '@arco-design/web-react';
-import { ChevronDown, CircleHelp, Download, Plus, RotateCcw, Search } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { ChevronDown, CircleHelp, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { cn } from '../../lib/cn';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../ui/confirm-dialog';
@@ -17,7 +17,8 @@ import { useFeedback } from '../ui/feedback';
 import { Input } from '../ui/input';
 import { SidePanel } from '../ui/side-panel';
 
-type ResourceRow = Record<string, string>;
+type ResourceValue = string | number | boolean | null | undefined;
+type ResourceItem = { id: string; [key: string]: ResourceValue };
 
 export type ResourceFilterOption = { value: string; label: string };
 
@@ -30,6 +31,22 @@ export type ResourceFilter = {
 export type ResourceDateRangeFilter = {
   key: string;
   label: string;
+};
+
+export type ResourceColumn = {
+  key: string;
+  label: string;
+  format?: 'datetime' | 'boolean';
+};
+
+export type ResourceField = {
+  key: string;
+  label: string;
+  required?: boolean;
+  requiredWhenCreating?: boolean;
+  type?: 'text' | 'password' | 'number' | 'select' | 'boolean';
+  options?: readonly ResourceFilterOption[];
+  defaultValue?: string;
 };
 
 const statusOptions = [
@@ -192,7 +209,9 @@ export function ResourcePage({
   description,
   icon: Icon,
   columns,
-  action = '新增记录',
+  apiPath,
+  action,
+  fields = [],
   keywordPlaceholder = '搜索当前资源',
   filters = [{ key: 'status', label: '状态', options: statusOptions }],
   dateRangeFilter,
@@ -201,13 +220,16 @@ export function ResourcePage({
   title: string;
   description: string;
   icon: React.ComponentType<{ size?: number }>;
-  columns: string[];
+  columns: readonly ResourceColumn[];
+  apiPath: string;
   action?: string;
+  fields?: readonly ResourceField[];
   keywordPlaceholder?: string;
   filters?: readonly ResourceFilter[];
   dateRangeFilter?: ResourceDateRangeFilter;
 }) {
   const { notify } = useFeedback();
+  const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
   const [keyword, setKeyword] = useState('');
   const defaultFilterValues = Object.fromEntries(
     filters.map((filter) => [filter.key, filter.options[0]?.value ?? 'all']),
@@ -221,45 +243,86 @@ export function ResourcePage({
     createdFrom: '',
     createdTo: '',
   });
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<ResourceItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState('');
-  const ActionIcon = action.includes('导出') ? Download : Plus;
-  const formFields = useMemo(
-    () =>
-      columns
-        .filter(
-          (column) =>
-            !['状态', '更新时间', '创建时间', '最近登录', '成员数', '文件', '可见'].includes(
-              column,
-            ),
-        )
-        .slice(0, 3),
-    [columns],
-  );
-  const tableColumns: TableColumnProps<ResourceRow>[] = [
+  const [editingItem, setEditingItem] = useState<ResourceItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ResourceItem | null>(null);
+  const [saving, setSaving] = useState(false);
+  const hasWriteActions = Boolean(action && fields.length);
+  const tableColumns: TableColumnProps<ResourceItem>[] = [
     ...columns.map((column) => ({
-      title: column,
-      dataIndex: column,
-      key: column,
+      title: column.label,
+      dataIndex: column.key,
+      key: column.key,
       ellipsis: true,
+      render: (value: ResourceValue) => formatCell(value, column.format),
     })),
-    {
-      title: '操作',
-      key: 'actions',
-      align: 'right',
-      render: () => (
-        <ArcoButton type="text" size="small" disabled>
-          查看
-        </ArcoButton>
-      ),
-    },
+    ...(hasWriteActions
+      ? [
+          {
+            title: '操作',
+            key: 'actions',
+            align: 'right' as const,
+            render: (_: ResourceValue, row: ResourceItem) => (
+              <span className="inline-flex gap-1">
+                <ArcoButton type="text" size="small" icon={<Pencil size={14} />} onClick={() => openEditPanel(row)}>
+                  编辑
+                </ArcoButton>
+                <ArcoButton type="text" size="small" status="danger" icon={<Trash2 size={14} />} onClick={() => setPendingDelete(row)}>
+                  删除
+                </ArcoButton>
+              </span>
+            ),
+          },
+        ]
+      : []),
   ];
   const hasAppliedFilters =
     Boolean(appliedFilters.keyword || appliedFilters.createdFrom || appliedFilters.createdTo) ||
     Object.values(appliedFilters.filterValues).some((value) => value !== 'all');
+
+  async function loadResources() {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+      if (appliedFilters.keyword) params.set('keyword', appliedFilters.keyword);
+      for (const [key, value] of Object.entries(appliedFilters.filterValues)) {
+        if (value !== 'all') params.set(key, value);
+      }
+      if (appliedFilters.createdFrom) params.set('createdFrom', appliedFilters.createdFrom);
+      if (appliedFilters.createdTo) params.set('createdTo', appliedFilters.createdTo);
+      const response = await fetch(api + '/api' + apiPath + '?' + params.toString(), {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body = await response.json().catch(() => null) as
+        | { items?: ResourceItem[]; total?: number; message?: string }
+        | null;
+      if (!response.ok) throw new Error(body?.message ?? '资源请求失败。');
+      setItems(body?.items ?? []);
+      setTotal(body?.total ?? 0);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '请稍后重试。';
+      setItems([]);
+      setTotal(0);
+      setLoadError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadResources();
+  }, [api, apiPath, appliedFilters, page]);
 
   function runQuery(event?: FormEvent) {
     event?.preventDefault();
@@ -277,11 +340,7 @@ export function ResourcePage({
       createdFrom,
       createdTo,
     });
-    notify({
-      title: '查询条件已应用',
-      description: '资源接口接入后将使用当前条件请求服务端数据。',
-      tone: 'info',
-    });
+    setPage(1);
   }
 
   function resetQuery() {
@@ -295,19 +354,25 @@ export function ResourcePage({
       createdFrom: '',
       createdTo: '',
     });
+    setPage(1);
     notify({ title: '筛选条件已重置', tone: 'success' });
   }
 
   function openCreatePanel() {
-    if (action.includes('导出')) {
-      notify({
-        title: action + '暂不可用',
-        description: '服务端导出任务接口尚未接入，未创建虚假任务。',
-        tone: 'warning',
-      });
-      return;
-    }
-    setFormValues({});
+    setEditingItem(null);
+    setFormValues(Object.fromEntries(fields.map((field) => [field.key, field.defaultValue ?? ''])));
+    setFieldError('');
+    setDirty(false);
+    setPanelOpen(true);
+  }
+
+  function openEditPanel(item: ResourceItem) {
+    setEditingItem(item);
+    setFormValues(
+      Object.fromEntries(
+        fields.map((field) => [field.key, item[field.key] === null || item[field.key] === undefined ? field.defaultValue ?? '' : String(item[field.key])]),
+      ),
+    );
     setFieldError('');
     setDirty(false);
     setPanelOpen(true);
@@ -324,21 +389,64 @@ export function ResourcePage({
   function updateField(field: string, nextValue: string) {
     setFormValues((current) => ({ ...current, [field]: nextValue }));
     setDirty(true);
-    if (field === formFields[0] && nextValue.trim()) setFieldError('');
+    if (nextValue.trim()) setFieldError('');
   }
 
-  function submitResource(event: FormEvent<HTMLFormElement>) {
+  async function submitResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const primaryField = formFields[0];
-    if (primaryField && !formValues[primaryField]?.trim()) {
-      setFieldError('请输入' + primaryField);
+    const requiredField = fields.find(
+      (field) => field.required || (!editingItem && field.requiredWhenCreating),
+    );
+    if (requiredField && !formValues[requiredField.key]?.trim()) {
+      setFieldError('请输入' + requiredField.label);
       return;
     }
-    notify({
-      title: '草稿已保留',
-      description: title + '写入接口尚未接入，当前填写内容不会被伪造为已保存。',
-      tone: 'warning',
-    });
+    setSaving(true);
+    try {
+      const payload = Object.fromEntries(
+        fields.map((field) => {
+          const value = formValues[field.key] ?? '';
+          if (field.type === 'number') return [field.key, value ? Number(value) : 0];
+          if (field.type === 'boolean') return [field.key, value === 'true'];
+          return [field.key, value];
+        }),
+      );
+      const response = await fetch(api + '/api' + apiPath + (editingItem ? '/' + editingItem.id : ''), {
+        method: editingItem ? 'PATCH' : 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => null) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message ?? '保存失败。');
+      setDirty(false);
+      setPanelOpen(false);
+      notify({ title: editingItem ? '记录已更新' : '记录已创建', tone: 'success' });
+      await loadResources();
+    } catch (error) {
+      notify({ title: '保存失败', description: error instanceof Error ? error.message : '请稍后重试。', tone: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteResource() {
+    const item = pendingDelete;
+    setPendingDelete(null);
+    if (!item) return;
+    try {
+      const response = await fetch(api + '/api' + apiPath + '/' + item.id, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const body = await response.json().catch(() => null) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message ?? '删除失败。');
+      notify({ title: '记录已删除', tone: 'success' });
+      if (items.length === 1 && page > 1) setPage((current) => current - 1);
+      else await loadResources();
+    } catch (error) {
+      notify({ title: '删除失败', description: error instanceof Error ? error.message : '请稍后重试。', tone: 'error' });
+    }
   }
 
   return (
@@ -431,24 +539,22 @@ export function ResourcePage({
         </form>
 
         <div className="flex items-center justify-between gap-3 py-4">
-          <ArcoButton
-            type="primary"
-            size="small"
-            icon={<ActionIcon size={14} />}
-            onClick={openCreatePanel}
-          >
-            {action}
-          </ArcoButton>
+          {hasWriteActions ? (
+            <ArcoButton type="primary" size="small" icon={<Plus size={14} />} onClick={openCreatePanel}>
+              {action}
+            </ArcoButton>
+          ) : <span />}
           <span className="text-xs text-[rgb(var(--ink-muted))]">
-            {hasAppliedFilters ? '已应用筛选 · ' : ''}数据同步状态：等待连接
+            {hasAppliedFilters ? '已应用筛选 · ' : ''}数据同步状态：{loading ? '加载中' : loadError ? '加载失败' : '已同步'}
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <Table<ResourceRow>
+          <Table<ResourceItem>
             className="min-w-[760px]"
             columns={tableColumns}
-            data={[]}
+            loading={loading}
+            data={items}
             rowKey="id"
             border={{ wrapper: true, cell: true }}
             hover
@@ -456,9 +562,7 @@ export function ResourcePage({
               <div className="py-10 text-center">
                 <Empty icon={<CircleHelp size={18} />} description="暂无数据" />
                 <p className="mt-1 text-xs leading-5 text-[rgb(var(--ink-muted))]">
-                  {hasAppliedFilters
-                    ? '当前条件下暂无数据；资源接口接入后将显示匹配记录。'
-                    : '连接资源接口后，这里会显示可操作记录。'}
+                  {loadError ? loadError : hasAppliedFilters ? '当前条件下暂无数据。' : '暂无可操作记录。'}
                 </p>
               </div>
             }
@@ -467,13 +571,14 @@ export function ResourcePage({
         </div>
 
         <footer className="flex items-center justify-between py-4 text-xs text-[rgb(var(--ink-muted))]">
-          <span>共 0 条</span>
+          <span>共 {total} 条</span>
           <Pagination
             size="small"
-            current={1}
+            current={page}
             pageSize={20}
-            total={0}
-            disabled
+            total={total}
+            disabled={loading || total === 0}
+            onChange={setPage}
             showTotal={(total) => '共 ' + String(total) + ' 条'}
           />
         </footer>
@@ -481,35 +586,39 @@ export function ResourcePage({
 
       <SidePanel
         open={panelOpen}
-        title={action}
-        description={'填写' + title + '的必要信息。未接入接口前内容只保留在当前页面。'}
+        title={editingItem ? '编辑' + title : action ?? '新增记录'}
+        description={'填写' + title + '的必要信息。'}
         onClose={requestClosePanel}
         footer={
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={requestClosePanel}>
               取消
             </Button>
-            <Button type="submit" size="sm" form="resource-editor-form">
-              保存
+            <Button type="submit" size="sm" form="resource-editor-form" disabled={saving}>
+              {saving ? '正在保存…' : '保存'}
             </Button>
           </div>
         }
       >
         <form id="resource-editor-form" onSubmit={submitResource} className="space-y-5">
-          {formFields.map((field, index) => (
-            <label key={field} className="block">
+          {fields.map((field) => (
+            <label key={field.key} className="block">
               <span className="mb-1.5 block text-xs font-medium">
-                {field}
-                {index === 0 ? <span className="ml-1 text-[rgb(var(--danger))]">*</span> : null}
+                {field.label}
+                {field.required ? <span className="ml-1 text-[rgb(var(--danger))]">*</span> : null}
               </span>
-              <Input
-                value={formValues[field] ?? ''}
-                aria-invalid={index === 0 && Boolean(fieldError)}
-                aria-describedby={index === 0 && fieldError ? 'resource-primary-error' : undefined}
-                placeholder={'输入' + field}
-                onChange={(event) => updateField(field, event.target.value)}
-              />
-              {index === 0 && fieldError ? (
+              {field.type === 'select' ? (
+                <select value={formValues[field.key] ?? ''} onChange={(event) => updateField(field.key, event.target.value)} className="h-9 w-full rounded-[2px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 text-sm">
+                  {(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              ) : field.type === 'boolean' ? (
+                <select value={formValues[field.key] ?? 'true'} onChange={(event) => updateField(field.key, event.target.value)} className="h-9 w-full rounded-[2px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 text-sm">
+                  <option value="true">是</option><option value="false">否</option>
+                </select>
+              ) : (
+                <Input type={field.type ?? 'text'} value={formValues[field.key] ?? ''} aria-invalid={field.required && Boolean(fieldError)} aria-describedby={field.required && fieldError ? 'resource-primary-error' : undefined} placeholder={'输入' + field.label} onChange={(event) => updateField(field.key, event.target.value)} />
+              )}
+              {field.required && fieldError ? (
                 <span
                   id="resource-primary-error"
                   role="alert"
@@ -520,9 +629,6 @@ export function ResourcePage({
               ) : null}
             </label>
           ))}
-          <div className="rounded-[4px] border border-[rgb(var(--line))] bg-[rgb(var(--muted))] p-3 text-xs leading-5 text-[rgb(var(--ink-muted))]">
-            保存动作将在对应服务端资源接口完成后启用。当前不会写入本地假数据或绕过服务端权限。
-          </div>
         </form>
       </SidePanel>
 
@@ -539,6 +645,22 @@ export function ResourcePage({
           setPanelOpen(false);
         }}
       />
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="删除这条记录？"
+        description="删除后将立即生效，相关限制会由服务端再次校验。"
+        confirmLabel="删除记录"
+        danger
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void deleteResource()}
+      />
     </>
   );
+}
+
+function formatCell(value: ResourceValue, format?: ResourceColumn['format']) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (format === 'boolean') return value ? '是' : '否';
+  if (format === 'datetime' && typeof value === 'string') return new Date(value).toLocaleString('zh-CN');
+  return String(value);
 }

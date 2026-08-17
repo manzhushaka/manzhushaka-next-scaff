@@ -11,6 +11,8 @@ import {
 import { SystemBrandingService } from './system-parameters/system-branding.service.js';
 import { RuntimeLogsController } from './runtime-logs/runtime-logs.controller.js';
 import { RuntimeLogService, RuntimeLoggerService } from './runtime-logs/runtime-log.service.js';
+import { ResourcesController } from './resources/resources.controller.js';
+import { ResourcesService } from './resources/resources.service.js';
 
 @Module({
   controllers: [
@@ -19,6 +21,7 @@ import { RuntimeLogService, RuntimeLoggerService } from './runtime-logs/runtime-
     PublicSystemBrandingController,
     SystemBrandingController,
     RuntimeLogsController,
+    ResourcesController,
   ],
   providers: [
     PrismaService,
@@ -27,6 +30,7 @@ import { RuntimeLogService, RuntimeLoggerService } from './runtime-logs/runtime-
     SystemBrandingService,
     RuntimeLogService,
     RuntimeLoggerService,
+    ResourcesService,
   ],
 })
 export class AppModule {}

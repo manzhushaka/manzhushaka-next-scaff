@@ -86,7 +86,10 @@ export function AsyncTasksPage() {
   async function refreshTasks() {
     try {
       const response = await fetch(api + '/api/async-tasks', { credentials: 'include' });
-      if (!response.ok) throw new Error('异步任务查询接口尚未接入。');
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(body?.message ?? '异步任务查询失败。');
+      }
       const body = (await response.json()) as { items?: TaskItem[] };
       setTasks(body.items ?? []);
       notify({ title: '任务列表已更新', tone: 'success' });
@@ -98,6 +101,10 @@ export function AsyncTasksPage() {
       });
     }
   }
+
+  useEffect(() => {
+    void refreshTasks();
+  }, []);
 
   function openCreatePanel() {
     setTaskType('EXPORT');
@@ -128,7 +135,10 @@ export function AsyncTasksPage() {
         credentials: 'include',
         body,
       });
-      if (!response.ok) throw new Error('异步任务创建接口尚未接入。');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(errorBody?.message ?? '异步任务创建失败。');
+      }
       const task = (await response.json()) as TaskItem;
       setTasks((current) => [task, ...current]);
       setDirty(false);
@@ -151,8 +161,10 @@ export function AsyncTasksPage() {
         method: 'POST',
         credentials: 'include',
       });
-      if (!response.ok)
-        throw new Error(action === 'cancel' ? '取消接口尚未接入。' : '重试接口尚未接入。');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(errorBody?.message ?? (action === 'cancel' ? '取消任务失败。' : '重试任务失败。'));
+      }
       const updatedTask = (await response.json()) as TaskItem;
       setTasks((current) =>
         current.map((item) => (item.id === updatedTask.id ? updatedTask : item)),
@@ -180,7 +192,10 @@ export function AsyncTasksPage() {
       const response = await fetch(api + '/api/async-tasks/' + task.id + '/download', {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('临时下载链接接口尚未接入。');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(errorBody?.message ?? '临时下载链接签发失败。');
+      }
       const result = (await response.json()) as { url: string; expiresAt: string };
       const expiresAt = new Date(result.expiresAt).getTime();
       const expiresIn = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
